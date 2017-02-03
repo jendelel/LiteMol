@@ -12,7 +12,15 @@ namespace LiteMol.PrankWeb {
         let spec: Plugin.Specification = {
             settings: {},
             transforms: [
+                // Molecule(model) transforms
+                { transformer: Transformer.Molecule.CreateModel, view: Views.Transform.Molecule.CreateModel, initiallyCollapsed: true },
+                { transformer: Transformer.Molecule.CreateSelection, view: Views.Transform.Molecule.CreateSelection, initiallyCollapsed: true },
 
+                { transformer: Transformer.Molecule.CreateAssembly, view: Views.Transform.Molecule.CreateAssembly, initiallyCollapsed: true },
+                { transformer: Transformer.Molecule.CreateSymmetryMates, view: Views.Transform.Molecule.CreateSymmetryMates, initiallyCollapsed: true },
+
+                { transformer: Transformer.Molecule.CreateMacromoleculeVisual, view: Views.Transform.Empty },
+                { transformer: Transformer.Molecule.CreateVisual, view: Views.Transform.Molecule.CreateVisual }
             ],
             behaviours: [
                 // you will find the source of all behaviours in the Bootstrap/Behaviour directory
@@ -44,10 +52,12 @@ namespace LiteMol.PrankWeb {
             ],
             components: [
                 Plugin.Components.Visualization.HighlightInfo(LayoutRegion.Main, true),
-
+                Plugin.Components.Entity.Current('LiteMol', Plugin.VERSION.number)(LayoutRegion.Right, true),
+                Plugin.Components.Transform.View(LayoutRegion.Right),
                 //Plugin.Components.Context.Log(LayoutRegion.Bottom, true),
                 Plugin.Components.create('PrankWeb.SequenceView', s => new PrankWeb.SequenceController(s), SequenceView)(LayoutRegion.Top, true),
                 Plugin.Components.Context.Overlay(LayoutRegion.Root),
+                Plugin.Components.Context.Toast(LayoutRegion.Main, true),
                 Plugin.Components.Context.BackgroundTasks(LayoutRegion.Main, true)
             ],
             viewport: {
@@ -63,14 +73,14 @@ namespace LiteMol.PrankWeb {
         return plugin;
     }
 
-    let appNode = document.getElementById('app')!
+    let appNode = document.getElementById('app') !
 
-    let pocketNode = document.getElementById('pockets')!
+    let pocketNode = document.getElementById('pockets') !
     let pdbId: string = appNode.getAttribute("data-pdbid") !
 
     let plugin = create(appNode);
 
-    LiteMol.Plugin.ReactDOM.render(LiteMol.Plugin.React.createElement(PocketList, {controller: new PocketController(plugin.context)}), pocketNode)
+    LiteMol.Plugin.ReactDOM.render(LiteMol.Plugin.React.createElement(PocketList, { controller: new PocketController(plugin.context) }), pocketNode)
 
     let downloadAction = Bootstrap.Tree.Transform.build()
         .add(plugin.root, Transformer.Data.Download, { url: `/api/csv/${pdbId}`, type: 'String' }, { isHidden: true })
@@ -118,7 +128,7 @@ namespace LiteMol.PrankWeb {
         // Represent an action to perform on the app state.
         let action = Bootstrap.Tree.Transform.build();
 
-        // This loads the model from PDBe
+        // This loads the model from REST api
         let modelAction = action.add(plugin.context.tree.root, Transformer.Data.Download, { url: `/api/mmcif/${pdbId}`, type: 'String', description: pdbId })
             .then(Transformer.Data.ParseCif, { id: pdbId, description: pdbId }, { isBinding: true })
             .then(Transformer.Molecule.CreateFromMmCif, { blockIndex: 0 }, { isBinding: true })
@@ -127,19 +137,19 @@ namespace LiteMol.PrankWeb {
         // Create a selection on the model and then create a visual for it...
         modelAction
             .then(<any>Transformer.Molecule.CreateSelectionFromQuery, { query: complementQ, name: 'Protein', silent: true }, {})
-            .then(<any>Transformer.Molecule.CreateVisual, { style: complementStyle }, { isHidden: true });
+            .then(<any>Transformer.Molecule.CreateVisual, { style: complementStyle }, { isHidden: false });
 
         selectionQueries.forEach((selectionQuery, i) => {
             let selectionColor = selectionColors.set('Uniform', pockets[i].color);
             let selectionStyle: Bootstrap.Visualization.Molecule.Style<Bootstrap.Visualization.Molecule.SurfaceParams> = {
                 type: 'Surface',
                 params: { probeRadius: 0.5, density: 1.25, smoothing: 3, isWireframe: false },
-                theme: { template: Bootstrap.Visualization.Molecule.Default.UniformThemeTemplate, colors: selectionColor, transparency: { alpha: 0.5 } }
+                theme: { template: Bootstrap.Visualization.Molecule.Default.UniformThemeTemplate, colors: selectionColor, transparency: { alpha: 0.8 } }
             };
             let sel = modelAction
                 .then(Transformer.Molecule.CreateSelectionFromQuery, { query: selectionQuery, name: pockets[i].name, silent: true }, {})
-            sel.then(<any>Transformer.Molecule.CreateVisual, { style: Bootstrap.Visualization.Molecule.Default.ForType.get('BallsAndSticks') }, { isHidden: true });
-            sel.then(<any>Transformer.Molecule.CreateVisual, { style: selectionStyle }, { isHidden: true });
+            sel.then(<any>Transformer.Molecule.CreateVisual, { style: Bootstrap.Visualization.Molecule.Default.ForType.get('BallsAndSticks') }, { isHidden: false });
+            sel.then(<any>Transformer.Molecule.CreateVisual, { style: selectionStyle }, { isHidden: false });
         });
 
         // to access the model after it was loaded...
