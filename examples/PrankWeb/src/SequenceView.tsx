@@ -156,7 +156,7 @@ namespace LiteMol.PrankWeb {
             }
 
             let seqId: number = -1;
-            return <div id="seqView"></div>
+            return <div id="seqView" className="noselect"></div>
             // return (<div className='protein-seq' style={{ fontFamily: 'Consolas, "Courier New", monospace', fontSize: 'large' }}>
             //     {seqToPrint.map((letter, i) => {
             //         if (letter === ' ') {
