@@ -76,16 +76,30 @@ namespace LiteMol.PrankWeb {
     let appNode = document.getElementById('app') !
 
     let pocketNode = document.getElementById('pockets') !
-    let pdbId: string = appNode.getAttribute("data-pdbid") !
+    let inputType: string = appNode.getAttribute("data-input-type") !
+    let inputId: string = appNode.getAttribute("data-input-id") !
+
+    let mmcifUrl: string;
+    let seqUrl: string;
+    let csvUrl: string;
+    if (inputType == "pdb") {
+        mmcifUrl = `/api/id/mmcif/${inputId}`
+        csvUrl = `/api/id/csv/${inputId}`
+        seqUrl = `/api/id/seq/${inputId}`
+    } else {
+        mmcifUrl = `/api/upload/mmcif/${inputId}`
+        csvUrl = `/api/upload/csv/${inputId}`
+        seqUrl = `/api/upload/seq/${inputId}`
+    }
 
     let plugin = create(appNode);
 
     LiteMol.Plugin.ReactDOM.render(LiteMol.Plugin.React.createElement(PocketList, { controller: new PocketController(plugin.context) }), pocketNode)
 
     let downloadAction = Bootstrap.Tree.Transform.build()
-        .add(plugin.root, Transformer.Data.Download, { url: `/api/csv/${pdbId}`, type: 'String' }, { isHidden: true })
+        .add(plugin.root, Transformer.Data.Download, { url: csvUrl, type: 'String' }, { isHidden: true })
         .then(ParseAndCreatePrediction, {}, { ref: 'pockets', isHidden: true })
-        .add(plugin.root, Transformer.Data.Download, { url: `/api/seq/${pdbId}`, type: 'String' }, { isHidden: true })
+        .add(plugin.root, Transformer.Data.Download, { url: seqUrl, type: 'String' }, { isHidden: true })
         .then(CreateSequence, {}, { ref: 'sequence', isHidden: true })
     plugin.applyTransform(downloadAction).then(() => {
         let pockets = (plugin.context.select('pockets')[0] as Prediction).props.pockets;
@@ -129,8 +143,8 @@ namespace LiteMol.PrankWeb {
         let action = Bootstrap.Tree.Transform.build();
 
         // This loads the model from REST api
-        let modelAction = action.add(plugin.context.tree.root, Transformer.Data.Download, { url: `/api/mmcif/${pdbId}`, type: 'String', description: pdbId })
-            .then(Transformer.Data.ParseCif, { id: pdbId, description: pdbId }, { isBinding: true })
+        let modelAction = action.add(plugin.context.tree.root, Transformer.Data.Download, { url: mmcifUrl, type: 'String', description: inputType })
+            .then(Transformer.Data.ParseCif, { id: inputId, description: inputType }, { isBinding: true })
             .then(Transformer.Molecule.CreateFromMmCif, { blockIndex: 0 }, { isBinding: true })
             .then(Transformer.Molecule.CreateModel, { modelIndex: 0 }, { isBinding: false, ref: 'model' });
 
