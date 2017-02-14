@@ -4,28 +4,32 @@ namespace LiteMol.PrankWeb {
     import Entity = Bootstrap.Entity;
     import Transformer = Bootstrap.Entity.Transformer;
 
-    export interface Sequence extends Entity<{ seq: string }> { }
+    export interface Sequence {
+        indices: number[]
+        seq: string[]
+        scores: number[]
+     }
 
-    export const Sequence = Entity.create<{ seq: string }>({
+    export interface SequenceEntity extends Entity<{ seq: Sequence }> { }
+
+    export const SequenceEntity = Entity.create<{ seq: Sequence }>({
         name: 'Protein sequence',
         typeClass: 'Data',
         shortName: 'PS',
         description: 'Represents sequence of the protein.'
     });
 
-    export const CreateSequence = Bootstrap.Tree.Transformer.create<Bootstrap.Entity.Data.String, Sequence, {}>({
+    export const CreateSequence = Bootstrap.Tree.Transformer.create<Bootstrap.Entity.Data.Json, SequenceEntity, {}>({
         id: 'protein-sequence-create',
         name: 'Protein sequence',
         description: 'Create protein sequence from string.',
-        from: [Entity.Data.String],
-        to: [Sequence],
+        from: [Entity.Data.Json],
+        to: [SequenceEntity],
         defaultParams: () => ({})
     }, (context, a, t) => {
-        return Bootstrap.Task.create<Sequence>(`Create sequence entity`, 'Normal', async ctx => {
+        return Bootstrap.Task.create<SequenceEntity>(`Create sequence entity`, 'Normal', async ctx => {
             await ctx.updateProgress('Creating sequence entity...');
-            let seq = a.props.data
-            console.log("Sekvence: " + seq)
-            return Sequence.create(t, { label: 'Sequence', seq })
+            return SequenceEntity.create(t, { label: 'Sequence', seq: a.props.data as Sequence })
         }).setReportTime(true);
     }
     );

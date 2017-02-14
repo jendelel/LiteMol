@@ -19,16 +19,13 @@
   "files": [
     "../../dist/js/LiteMol-plugin.d.ts",
     
-    "../../src/Viewer/App/DataSources.ts",
-    "../../src/Viewer/PDBe/Data.ts",
-    "../../src/Viewer/PDBe/Density.ts",
-    "../../src/Viewer/PDBe/Validation.ts",
-
     "./src/SequenceEntity.ts",    
     "./src/PredictionEntity.ts",    
-    "./src/SequenceController.ts",    
     "./src/SequenceView.tsx" ,
     "./src/PocketList.tsx" ,   
+    "./src/DataLoader.ts",
+    "./src/App.tsx",
+    "./src/Specification.ts",
     "./src/App.ts"
   ]
 }
