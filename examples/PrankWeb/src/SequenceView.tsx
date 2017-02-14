@@ -49,16 +49,45 @@ namespace LiteMol.PrankWeb {
             return item
         }
 
-        componentWillMount() {
-            super.componentWillMount();
-            //this.subscribe(Bootstrap.Event.Common.LayoutChanged.getStream(this.controller.context), () => this.scrollToBottom());
+        addPocketFeatures(features: Feature[]) {
+            let map = LiteMol.Core.Utils.FastMap.create<number, number>();
+            // Build hashmap index->sequential index zero-based.
+            this.controller.latestState.seq.indices.forEach((index, seqIndex) => {
+                map.set(index, seqIndex);
+            })
+            let pockets = this.controller.latestState.pockets;
+            pockets.forEach((pocket, i) => {
+                // Transform indices to sequential indices and then sort them
+                let sortedIndices = pocket.residueIds.map((index) => map.get(index) !)
+                    .sort((a, b) => (a - b));
+                let lastStart = -1;
+                let lastResNum = -1;
+                sortedIndices.forEach((resNum, y) => {
+                    if (y == 0) {
+                        lastStart = resNum;
+                    } else {
+                        if (lastResNum + 1 < resNum) {
+                            features.push(new Feature("Pockets", `pocket${i} col${i % 6}`, lastStart, lastResNum, pocket.rank.toString()))
+                            lastStart = resNum;
+                        }
+                    }
+                    lastResNum = resNum;
+                })
+                features.push(new Feature("Pockets", `pocket${pockets.length - 1} col${i % 6}`, lastStart, lastResNum, pocket.rank.toString()))
+            });
+
+        }
+
+        componentDidMount() {
+            this.componentDidUpdate();
         }
 
         componentDidUpdate() {
-            //this.scrollToBottom();
-            let pockets = this.controller.latestState.pockets
+            let seq = this.controller.latestState.seq;
+            if (seq.seq.length <= 0) return; // Sequence isn't loaded yet.
             let pviz = getPviz();
-            var seqEntry = new pviz.SeqEntry({ sequence: this.controller.latestState.seq });
+            let pockets = this.controller.latestState.pockets;
+            var seqEntry = new pviz.SeqEntry({ sequence: seq.seq.join("") });
             new pviz.SeqEntryAnnotInteractiveView({
                 model: seqEntry, el: '#seqView',
                 xChangeCallback: (pStart: number, pEnd: number) => {
@@ -67,41 +96,16 @@ namespace LiteMol.PrankWeb {
             }).render();
 
             let features: Array<Feature> = []
-            pockets.forEach((pocket, i) => {
-                pocket.residueIds.sort((a, b) => { return a - b })
-                let lastStart = -1;
-                let lastResNum = -1;
-                pocket.residueIds.forEach((resNum, y) => {
-                    if (y == 0) {
-                        lastStart = resNum
-                    } else {
-                        if (lastResNum + 1 < resNum) {
-                            features.push(new Feature("Pockets", `col${i % 6}`, lastStart, lastResNum, pocket.rank.toString()))
-                            lastStart = resNum;
-                        }
-                    }
-                    lastResNum = resNum
-                })
-                features.push(new Feature("Pockets", `col${i % 6}`, lastStart, lastResNum, pocket.rank.toString()))
-            })
-
-            let getColor = function (seqId: number) {
-                let color = Visualization.Color.fromRgb(255, 255, 255);
-                let colorSet: boolean = false
-                pockets.forEach((pocket) => {
-                    if (pocket.residueIds.indexOf(seqId) >= 0) {
-                        if (!colorSet) {
-                            color = pocket.color;
-                            colorSet = true
-                        } else {
-                            console.log(seqId.toString() + " is in at least two pockets!");
-                        }
-                    }
-                })
-                return color;
+            this.addPocketFeatures(features);
+            let scores = seq.scores;
+            // Add conservation features.
+            if (scores != null && scores.length >= 0) {
+                scores.forEach((score, i) => {
+                    let s = score >= 0 ? score : 0;
+                    let s2 = Math.round(s * 10); // There are 11 shades of gray with selector score0, score1, ..., score10.
+                    features.push(new Feature("Conservation", "score" + s2, i, i, (Math.round(s * 100) / 100).toString()));
+                });
             }
-
-
             seqEntry.addFeatures(features);
         }
 
@@ -140,40 +144,23 @@ namespace LiteMol.PrankWeb {
         }
 
         render() {
-            let seq = this.controller.latestState.seq.split('');
-            let pockets = this.controller.latestState.pockets;
-            let ctx = this.controller.context
-            let seqToPrint: string[] = []
-            seq.forEach((letter, i) => {
-                seqToPrint.push(letter)
-                if ((i + 1) % 10 == 0) {
-                    seqToPrint.push(' ')
-                }
-            })
-
-            let colorToString = function (color: Visualization.Color) {
-                return 'rgb(' + (color.r * 255) + ',' + (color.g * 255) + ',' + (color.b * 255) + ')';
-            }
-
             let seqId: number = -1;
             return <div id="seqView" className="noselect"></div>
-            // return (<div className='protein-seq' style={{ fontFamily: 'Consolas, "Courier New", monospace', fontSize: 'large' }}>
-            //     {seqToPrint.map((letter, i) => {
-            //         if (letter === ' ') {
-            //             return <span className="space"> </span>
-            //         } else {
-            //             seqId++
-            //             return <span
-            //                 id={'res' + seqId.toString()}
-            //                 onMouseEnter={this.onLetterMouseEnter.bind(this, seqId, letter, true)}
-            //                 onMouseLeave={this.onLetterMouseEnter.bind(this, seqId, letter, false)}
-            //                 onClick={this.onLetterClick.bind(this, seqId, letter)}
-            //                 style={{ color: colorToString(getColor(seqId)) }}
-            //                 >{letter}</span>
-            //         }
-            //     })
-            //     }
-            // </div>);
+        }
+    }
+
+    export class SequenceController extends Bootstrap.Components.Component<{ seq: Sequence, pockets: PrankPocket[] }> {
+
+        constructor(context: Bootstrap.Context) {
+            super(context, { seq: { indices: [], seq: [], scores: [] }, pockets: [] });
+
+            Bootstrap.Event.Tree.NodeAdded.getStream(context).subscribe(e => {
+                if (e.data.type === SequenceEntity) {
+                    this.setState({ seq: e.data.props.seq, pockets: this.latestState.pockets });
+                } else if (e.data.type === Prediction) {
+                    this.setState({ seq: this.latestState.seq, pockets: e.data.props.pockets });
+                }
+            })
         }
     }
 }

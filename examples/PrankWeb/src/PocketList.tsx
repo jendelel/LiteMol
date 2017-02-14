@@ -6,18 +6,18 @@ namespace LiteMol.PrankWeb {
     import Bootstrap = LiteMol.Bootstrap;
     import React = LiteMol.Plugin.React; // this is to enable the HTML-like syntax
 
-    export class PocketController extends Bootstrap.Components.Component<{ pockets: PrankPocket[] }> {
+    // export class PocketController extends Bootstrap.Components.Component<{ pockets: PrankPocket[] }> {
 
-        constructor(context: Bootstrap.Context) {
-            super(context, { pockets: [] });
+    //     constructor(context: Bootstrap.Context) {
+    //         super(context, { pockets: [] });
 
-            Bootstrap.Event.Tree.NodeAdded.getStream(context).subscribe(e => {
-                if (e.data.type === Prediction) {
-                    this.setState({ pockets: e.data.props.pockets });
-                }
-            })
-        }
-    }
+    //         Bootstrap.Event.Tree.NodeAdded.getStream(context).subscribe(e => {
+    //             if (e.data.type === Prediction) {
+    //                 this.setState({ pockets: e.data.props.pockets });
+    //             }
+    //         })
+    //     }
+    // }
 
     class CacheItem {
         constructor(query: Query.Builder, selectionInfo: Bootstrap.Interactivity.Molecule.SelectionInfo) {
@@ -28,10 +28,10 @@ namespace LiteMol.PrankWeb {
         selectionInfo: Bootstrap.Interactivity.Molecule.SelectionInfo
     }
 
-    export class PocketList extends Views.View<PocketController, {}, {}> {
+    export class PocketList extends React.Component<{plugin:Plugin.Controller, data:DataLoader.PrankData},{}> {
 
         getPocket(pocket: PrankPocket, model: Bootstrap.Entity.Molecule.Model) {
-            let ctx = this.controller.context
+            let ctx = this.props.plugin.context
             let cache = ctx.entityCache;
             let cacheId = `__pocketSelectionInfo-${pocket.name}`
             let item = cache.get<CacheItem>(model, cacheId);
@@ -46,17 +46,11 @@ namespace LiteMol.PrankWeb {
             return item
         }
 
-        componentWillMount() {
-            super.componentWillMount();
-            //this.subscribe(Bootstrap.Event.Common.LayoutChanged.getStream(this.controller.context), () => this.scrollToBottom());
-        }
-
         componentDidUpdate() {
-            //this.scrollToBottom();
         }
 
         onLetterMouseEnter(pocket: PrankPocket, isOn: boolean) {
-            let ctx = this.controller.context;
+            let ctx = this.props.plugin.context;
             let model = ctx.select('model')[0] as Bootstrap.Entity.Molecule.Model;
             if (!model) return;
 
@@ -77,7 +71,7 @@ namespace LiteMol.PrankWeb {
         }
 
         onLetterClick(pocket: PrankPocket) {
-            let ctx = this.controller.context;
+            let ctx = this.props.plugin.context;
             let model = ctx.select('model')[0] as Bootstrap.Entity.Molecule.Model;
             if (!model) return;
 
@@ -86,8 +80,8 @@ namespace LiteMol.PrankWeb {
         }
 
         render() {
-            let pockets = this.controller.latestState.pockets;
-            let ctx = this.controller.context
+            let pockets = this.props.data.prediction.props.pockets;
+            let ctx = this.props.plugin.context
 
             let colorToString = function (color: Visualization.Color) {
                 return 'rgb(' + (color.r * 255) + ',' + (color.g * 255) + ',' + (color.b * 255) + ')';
@@ -96,7 +90,7 @@ namespace LiteMol.PrankWeb {
             return (<div className="pocket-list">
                 {pockets.map((pocket, i) => {
                     return <div className="pocket col-sm-6 col-xs-12" 
-                                style={{ borderColor: colorToString(pocket.color) }} 
+                                style={{ borderColor: colorToString(Colors.get(i%6)) }} 
                                 onMouseEnter={this.onLetterMouseEnter.bind(this, pocket, true)}
                                 onMouseLeave={this.onLetterMouseEnter.bind(this, pocket, false)}
                                 onClick={this.onLetterClick.bind(this, pocket)}
