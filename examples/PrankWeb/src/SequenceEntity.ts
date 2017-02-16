@@ -8,7 +8,7 @@ namespace LiteMol.PrankWeb {
         indices: number[]
         seq: string[]
         scores: number[]
-     }
+    }
 
     export interface SequenceEntity extends Entity<{ seq: Sequence }> { }
 
@@ -29,7 +29,14 @@ namespace LiteMol.PrankWeb {
     }, (context, a, t) => {
         return Bootstrap.Task.create<SequenceEntity>(`Create sequence entity`, 'Normal', async ctx => {
             await ctx.updateProgress('Creating sequence entity...');
-            return SequenceEntity.create(t, { label: 'Sequence', seq: a.props.data as Sequence })
+            let seq = a.props.data as Sequence;
+            // Get rid of the negative scores.
+            if (seq.scores) {
+                seq.scores.forEach((score, i) => {
+                    seq.scores[i] = score < 0 ? 0 : score;
+                })
+            }
+            return SequenceEntity.create(t, { label: 'Sequence', seq })
         }).setReportTime(true);
     }
     );

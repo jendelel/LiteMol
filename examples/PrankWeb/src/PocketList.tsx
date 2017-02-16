@@ -28,11 +28,59 @@ namespace LiteMol.PrankWeb {
         selectionInfo: Bootstrap.Interactivity.Molecule.SelectionInfo
     }
 
-    export class PocketList extends React.Component<{plugin:Plugin.Controller, data:DataLoader.PrankData},{}> {
+    export class PocketList extends React.Component<{ plugin: Plugin.Controller, data: DataLoader.PrankData }, {}> {
 
-        getPocket(pocket: PrankPocket, model: Bootstrap.Entity.Molecule.Model) {
+        calcConservationAvg() {
+            let seq = this.props.data.sequence.props.seq;
+            let pockets = this.props.data.prediction.props.pockets;
+            if (!seq.scores || seq.scores.length <= 0) return pockets.map(()=> "N/A");
+            let indexMap = LiteMol.Core.Utils.FastMap.create<number, number>();
+            seq.indices.forEach((element, i) => { indexMap.set(element, i); });
+            return pockets.map((pocket, i) => {
+                let scoreSum = pocket.residueIds.map((i) => seq.scores[indexMap.get(i) !]).reduce((acc, val) => acc + val, 0);
+                // Round the score to 3 digit average.
+                return (Math.round((scoreSum / pocket.residueIds.length) * 1000) / 1000).toString();
+            })
+        }
+
+        render() {
+            let pockets = this.props.data.prediction.props.pockets;
+            let ctx = this.props.plugin.context
+            let controls: any[] = [];
+            let conservationAvg: string[] = this.calcConservationAvg();
+            if (pockets.length > 0) {
+                controls.push(<h2>Pockets:</h2>);
+            }
+            pockets.forEach((pocket, i) => {
+                controls.push(
+                    <Pocket plugin={this.props.plugin} model={this.props.data.model} pocket={pocket} index={i} conservationAvg={conservationAvg[i]} />
+                )
+            });
+            return (<div className="pockets">{controls}
+            </div>);
+        }
+    }
+
+    export class Pocket extends React.Component<{ plugin: Plugin.Controller, model: Bootstrap.Entity.Molecule.Model, pocket: PrankPocket, index: number, conservationAvg: string },
+        { isVisible: boolean }> {
+        state = { isVisible: true }
+
+        componentWillMount() {
+            let ctx = this.props.plugin.context;
+            Bootstrap.Command.Entity.SetVisibility.getStream(this.props.plugin.context).subscribe(
+                e => {
+                    let pocketEntity = ctx.select(this.props.pocket.name)[0] as Bootstrap.Entity.Any;
+                    if (pocketEntity && e.data.entity.id === pocketEntity.id) {
+                        this.setState({ isVisible: e.data.visible });
+                    }
+                });
+        }
+
+        private getPocket() {
             let ctx = this.props.plugin.context
             let cache = ctx.entityCache;
+            let pocket = this.props.pocket;
+            let model = this.props.model;
             let cacheId = `__pocketSelectionInfo-${pocket.name}`
             let item = cache.get<CacheItem>(model, cacheId);
             if (!item) {
@@ -46,64 +94,69 @@ namespace LiteMol.PrankWeb {
             return item
         }
 
-        componentDidUpdate() {
-        }
+        onPocketMouse(enter: boolean) {
+            // Cannot focus on hidden pocket.
+            if (!this.state.isVisible) return;
 
-        onLetterMouseEnter(pocket: PrankPocket, isOn: boolean) {
             let ctx = this.props.plugin.context;
-            let model = ctx.select('model')[0] as Bootstrap.Entity.Molecule.Model;
-            if (!model) return;
+            let model = this.props.model;
 
             // Get the sequence selection
-            let pocketSel = this.getPocket(pocket, model)
+            let pocketSel = this.getPocket()
 
             // Highlight in the 3D Visualization
-            Bootstrap.Command.Molecule.Highlight.dispatch(ctx, { model: model, query: pocketSel.query, isOn: isOn })
+            Bootstrap.Command.Molecule.Highlight.dispatch(ctx, { model: model, query: pocketSel.query, isOn: enter })
 
-            if (isOn) {
-                 // Show tooltip
-                 let label = Bootstrap.Interactivity.Molecule.formatInfo(pocketSel.selectionInfo)
-                 Bootstrap.Event.Interactivity.Highlight.dispatch(ctx, [label, `${pocket.name}`])
-             } else {
-                 // Hide tooltip
-                 Bootstrap.Event.Interactivity.Highlight.dispatch(ctx, [])
-             }
+            if (enter) {
+                // Show tooltip
+                let label = Bootstrap.Interactivity.Molecule.formatInfo(pocketSel.selectionInfo)
+                Bootstrap.Event.Interactivity.Highlight.dispatch(ctx, [label, `Pocket score: ${this.props.pocket.score}`])
+            } else {
+                // Hide tooltip
+                Bootstrap.Event.Interactivity.Highlight.dispatch(ctx, [])
+            }
         }
 
-        onLetterClick(pocket: PrankPocket) {
-            let ctx = this.props.plugin.context;
-            let model = ctx.select('model')[0] as Bootstrap.Entity.Molecule.Model;
-            if (!model) return;
+        onPocketClick() {
+            // Cannot focus on hidden pocket.
+            if (!this.state.isVisible) return;
 
-            let query = this.getPocket(pocket, model).query
+            let ctx = this.props.plugin.context;
+            let model = this.props.model;
+
+            let query = this.getPocket().query
             Bootstrap.Command.Molecule.FocusQuery.dispatch(ctx, { model, query })
         }
 
-        render() {
-            let pockets = this.props.data.prediction.props.pockets;
-            let ctx = this.props.plugin.context
-
-            let colorToString = function (color: Visualization.Color) {
-                return 'rgb(' + (color.r * 255) + ',' + (color.g * 255) + ',' + (color.b * 255) + ')';
+        toggleVisibility() {
+            let ctx = this.props.plugin.context;
+            let pocketEntity = ctx.select(this.props.pocket.name)[0] as Bootstrap.Entity.Any;
+            if (pocketEntity) {
+                Bootstrap.Command.Entity.SetVisibility.dispatch(this.props.plugin.context, { entity: pocketEntity, visible: !this.state.isVisible });
             }
+            this.setState({ isVisible: !this.state.isVisible });
+        }
 
-            return (<div className="pocket-list">
-                {pockets.map((pocket, i) => {
-                    return <div className="pocket col-sm-6 col-xs-12" 
-                                style={{ borderColor: colorToString(Colors.get(i%6)) }} 
-                                onMouseEnter={this.onLetterMouseEnter.bind(this, pocket, true)}
-                                onMouseLeave={this.onLetterMouseEnter.bind(this, pocket, false)}
-                                onClick={this.onLetterClick.bind(this, pocket)}
-                                ><dl>
-                        <dt>Pocket name</dt>
-                        <dd>{pocket.name}</dd>
-                        <dt>Pocket rank</dt>
-                        <dd>{pocket.rank}</dd>
-                        <dt>Pocket score</dt>
-                        <dd>{pocket.score}</dd>
-                    </dl></div>
-                })}
-            </div>);
+        // https://css-tricks.com/left-align-and-right-align-text-on-the-same-line/
+        render() {
+            let pocketClass = `pocket pocket${this.props.index % Colors.count()}`;
+            let pocket = this.props.pocket;
+            let focusIconDisplay = this.state.isVisible ? "inherit" : "none";
+            let hideIconOpacity = this.state.isVisible ? 1 : 0.3;
+            return <div className={pocketClass}
+            /*onMouseEnter={() => { this.onPocketMouse(true); }}
+            onMouseLeave={() => { this.onPocketMouse(false); }}
+            onClick={() => { this.onPocketClick(); }}*/
+            >
+                <button style={{ float: 'left', display: focusIconDisplay }} title="Focus" className="pocket-btn" onClick={() => { this.onPocketClick() }} onMouseEnter={() => { this.onPocketMouse(true) }} onMouseOut={() => { this.onPocketMouse(false) }}><span className="pocket-icon focus-icon" /></button>
+                <button style={{ float: 'right', opacity: hideIconOpacity }} title="Hide" className="pocket-btn" onClick={() => { this.toggleVisibility() }}><span className="pocket-icon hide-icon" /></button>
+                <div style={{ clear: 'both' }} />
+
+                <p style={{ float: 'left' }}>Pocket rank:</p><p style={{ float: 'right' }}>{pocket.rank}</p><div style={{ clear: 'both' }} />
+                <p style={{ float: 'left' }}>Pocket score:</p><p style={{ float: 'right' }}>{pocket.score}</p><div style={{ clear: 'both' }} />
+                <p style={{ float: 'left' }}>AA count:</p><p style={{ float: 'right' }}>{pocket.residueIds.length}</p><div style={{ clear: 'both' }} />
+                <p style={{ float: 'left', textDecoration: 'overline' }}>Conservation:</p><p style={{ float: 'right' }}>{this.props.conservationAvg}</p><div style={{ clear: 'both' }} />
+            </div>
         }
     }
 }

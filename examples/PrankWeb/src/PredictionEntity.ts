@@ -18,12 +18,14 @@ namespace LiteMol.PrankWeb {
     }
 
     export const Colors = Bootstrap.Immutable.List.of(
-        Visualization.Color.fromHexString("#e74c3c"),
-        Visualization.Color.fromHexString("#00ffff"),
-        Visualization.Color.fromHexString("#2ecc71"),
-        Visualization.Color.fromHexString("#9b59b6"),
-        Visualization.Color.fromHexString("#00007f"),
-        Visualization.Color.fromHexString("#e67e22"))
+        Visualization.Color.fromRgb(0, 0, 255),      //Blue
+        Visualization.Color.fromRgb(255, 0, 0),      //Red
+        Visualization.Color.fromRgb(0, 255, 0),      //Green
+        Visualization.Color.fromRgb(255, 0, 255),    //Magenta
+        Visualization.Color.fromRgb(255, 128, 128),  //Pink
+        Visualization.Color.fromRgb(128, 128, 128),  //Gray
+        Visualization.Color.fromRgb(128, 0, 0),      //Brown
+        Visualization.Color.fromRgb(255, 128, 0))    //Orange
 
     export interface Prediction extends Entity<{ pockets: PrankPocket[] }> { }
 

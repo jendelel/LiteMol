@@ -10,10 +10,11 @@ namespace LiteMol.PrankWeb {
     export function create(target: HTMLElement) {
         let plugin = Plugin.create({
             target,
-            // viewportBackground: '#333',
+            viewportBackground: '#e7e7e7', // white
             layoutState: {
-                hideControls: false, 
+                hideControls: true, 
                 isExpanded: false,
+                collapsedControlsLayout: Bootstrap.Components.CollapsedControlsLayout.Landscape,
             },
             customSpecification: PrankWebSpec
         });
@@ -22,7 +23,7 @@ namespace LiteMol.PrankWeb {
     }
 
     let appNode = document.getElementById('app') !
-    let pocketNode = document.getElementById('pockets') !
+    let pocketNode = document.getElementById('pocket-list') !
     let inputType: string = appNode.getAttribute("data-input-type") !
     let inputId: string = appNode.getAttribute("data-input-id") !
     App.render(create(appNode), inputType, inputId, pocketNode);
