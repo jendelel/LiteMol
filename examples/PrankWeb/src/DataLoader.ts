@@ -71,7 +71,7 @@ namespace LiteMol.PrankWeb.DataLoader {
 
             // Selection of complement of the previous set.
             let complement : Query.Builder = Query.atomsById.apply(null, allPocketIds).complement();
-            let complementColors = selectionColors.set('Uniform', LiteMol.Visualization.Color.fromHex(0x666666));
+            let complementColors = selectionColors.set('Uniform', LiteMol.Visualization.Color.fromHex(0xffffff));
             let complementStyle: Bootstrap.Visualization.Molecule.Style<Bootstrap.Visualization.Molecule.SurfaceParams> = {
                 type: 'Surface',
                 params: { probeRadius: 0.5, density: 1.4, smoothing: 4, isWireframe: false },

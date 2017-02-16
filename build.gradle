@@ -11,7 +11,7 @@ tasks['gulp_Example-PrankWeb'].dependsOn gulp_default
 
 // Run gulp only if something in "src" dir changes.
 def srcDir = new File(projectDir, "src")
-def destDir = new File(projectDir, "build")
+def destDir = new File(projectDir, "dist")
 gulp_default.inputs.dir srcDir
 gulp_default.outputs.dir destDir
 
