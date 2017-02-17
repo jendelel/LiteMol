@@ -62,20 +62,21 @@ namespace LiteMol.PrankWeb.DataLoader {
             let allPocketIds: number[] = [];
             pockets.forEach((pocket) => {
                 selectionQueries.push(Query.atomsById.apply(null, pocket.surfAtomIds));
-                pocket.surfAtomIds.forEach((id) => {allPocketIds.push(id);});
+                pocket.surfAtomIds.forEach((id) => { allPocketIds.push(id); });
             });
-            let selectionColors = Bootstrap.Immutable.Map<string, LiteMol.Visualization.Color>()
-                .set('Uniform', LiteMol.Visualization.Color.fromHex(0xff0000))
-                .set('Selection', LiteMol.Visualization.Theme.Default.SelectionColor)
-                .set('Highlight', LiteMol.Visualization.Theme.Default.HighlightColor);
+            let surfaceColors = Bootstrap.Immutable.Map<string, Visualization.Color>()
+                .set('Uniform', Visualization.Color.fromHex(0xff0000))
+                .set('Selection', Visualization.Theme.Default.SelectionColor)
+                .set('Highlight', Visualization.Theme.Default.HighlightColor);
+            let cartoonsColors = Bootstrap.Visualization.Molecule.UniformBaseColors;
 
             // Selection of complement of the previous set.
-            let complement : Query.Builder = Query.atomsById.apply(null, allPocketIds).complement();
-            let complementColors = selectionColors.set('Uniform', LiteMol.Visualization.Color.fromHex(0xffffff));
+            let complement: Query.Builder = Query.atomsById.apply(null, allPocketIds).complement();
+            let complementColors = surfaceColors.set('Uniform', LiteMol.Visualization.Color.fromHex(0xffffff));
             let complementStyle: Bootstrap.Visualization.Molecule.Style<Bootstrap.Visualization.Molecule.SurfaceParams> = {
                 type: 'Surface',
                 params: { probeRadius: 0.5, density: 1.4, smoothing: 4, isWireframe: false },
-                theme: { template: Bootstrap.Visualization.Molecule.Default.UniformThemeTemplate, colors: complementColors, transparency: { alpha: 1.0 } }
+                theme: { template: Bootstrap.Visualization.Molecule.Default.UniformThemeTemplate, colors: complementColors, transparency: { alpha: 0.4 } }
             };
 
             let action = plugin.createTransform();
@@ -83,11 +84,18 @@ namespace LiteMol.PrankWeb.DataLoader {
             action
                 .add(data.model, Transformer.Molecule.CreateSelectionFromQuery, { query: complement, name: 'Protein complement', silent: true }, {})
                 .then(Transformer.Molecule.CreateVisual, { style: complementStyle }, { isHidden: false });
+            // Create cartoons model from the whole protein.
+            let cartoonStyle: Bootstrap.Visualization.Molecule.Style<any> = {
+                type: 'Cartoons', params: { detail: 'Automatic' },
+                theme: {template: Bootstrap.Visualization.Molecule.Default.UniformThemeTemplate, colors: cartoonsColors}
+            }
+            cartoonStyle.theme.colors = cartoonsColors;
+            action.add(data.model, Transformer.Molecule.CreateVisual, { style: cartoonStyle }, {});
 
             // For each pocket: 
             selectionQueries.forEach((selectionQuery, i) => {
                 // Set selection style (i.e. color, probe, density etc.)
-                let selectionColor = selectionColors.set('Uniform', Colors.get(i % 6));
+                let selectionColor = surfaceColors.set('Uniform', Colors.get(i % 6));
                 let selectionStyle: Bootstrap.Visualization.Molecule.Style<Bootstrap.Visualization.Molecule.SurfaceParams> = {
                     type: 'Surface',
                     params: { probeRadius: 0.5, density: 1.25, smoothing: 3, isWireframe: false },
