@@ -36,6 +36,7 @@ namespace LiteMol.Bootstrap.Visualization.Molecule {
     
     export interface SurfaceParams {
         probeRadius: number,
+        automaticDensity?: boolean,
         density: number,
         smoothing: number,
         isWireframe: boolean
@@ -55,8 +56,9 @@ namespace LiteMol.Bootstrap.Visualization.Molecule {
         
         export const SurfaceParams: SurfaceParams = {
             probeRadius: 1.4,
+            automaticDensity: true,
             density: 1.1,
-            smoothing: 6,
+            smoothing: 10,
             isWireframe: false
         }
         

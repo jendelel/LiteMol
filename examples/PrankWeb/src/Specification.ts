@@ -60,7 +60,7 @@ namespace LiteMol.PrankWeb {
         ],
         viewport: {
             view: Views.Visualization.Viewport,
-            controlsView: Views.Visualization.ViewportControls
+            controlsView: Views.Visualization.ViewportControls,
         },
         layoutView: Views.Layout, // nor this
         tree: { region: LayoutRegion.Left, view: Views.Entity.Tree }

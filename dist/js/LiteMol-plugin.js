@@ -56179,7 +56179,7 @@ var LiteMol;
 (function (LiteMol) {
     var Core;
     (function (Core) {
-        Core.VERSION = { number: "3.0.1", date: "Jan 26 2017" };
+        Core.VERSION = { number: "3.0.4", date: "Feb 17 2017" };
     })(Core = LiteMol.Core || (LiteMol.Core = {}));
 })(LiteMol || (LiteMol = {}));
 /*
@@ -57992,6 +57992,12 @@ var LiteMol;
                         function CrystStructureInfo(record) {
                             this.record = record;
                         }
+                        CrystStructureInfo.prototype.getValue = function (start, len) {
+                            var ret = this.record.substr(6, 9).trim();
+                            if (!ret.length)
+                                return '.';
+                            return ret;
+                        };
                         CrystStructureInfo.prototype.toCifCategory = function (id) {
                             //COLUMNS       DATA TYPE      CONTENTS
                             //--------------------------------------------------------------------------------
@@ -58006,16 +58012,16 @@ var LiteMol;
                             //67 - 70       Integer        Z value           
                             var data = [
                                 "_cell.entry_id           '" + id + "'",
-                                "_cell.length_a           " + this.record.substr(6, 9).trim(),
-                                "_cell.length_b           " + this.record.substr(15, 9).trim(),
-                                "_cell.length_c           " + this.record.substr(24, 9).trim(),
-                                "_cell.angle_alpha        " + this.record.substr(33, 7).trim(),
-                                "_cell.angle_beta         " + this.record.substr(40, 7).trim(),
-                                "_cell.angle_gamma        " + this.record.substr(48, 7).trim(),
-                                "_cell.Z_PDB              " + this.record.substr(66, 4).trim(),
+                                "_cell.length_a           " + this.getValue(6, 9),
+                                "_cell.length_b           " + this.getValue(15, 9),
+                                "_cell.length_c           " + this.getValue(24, 9),
+                                "_cell.angle_alpha        " + this.getValue(33, 7),
+                                "_cell.angle_beta         " + this.getValue(40, 7),
+                                "_cell.angle_gamma        " + this.getValue(48, 7),
+                                "_cell.Z_PDB              " + this.getValue(66, 4),
                                 "_cell.pdbx_unique_axis   ?",
                                 "_symmetry.entry_id                         '" + id + "'",
-                                "_symmetry.space_group_name_H-M             '" + this.record.substr(55, 11).trim() + "'",
+                                "_symmetry.space_group_name_H-M             '" + this.getValue(55, 11) + "'",
                                 "_symmetry.pdbx_full_space_group_name_H-M   ?",
                                 "_symmetry.cell_setting                     ?",
                                 "_symmetry.Int_Tables_number                ?",
@@ -60120,7 +60126,7 @@ var LiteMol;
                     dst[3 * j + 1] += src[3 * i + 1];
                     dst[3 * j + 2] += src[3 * i + 2];
                 }
-                function laplacianSmoothIter(surface, counts, vs) {
+                function laplacianSmoothIter(surface, vertexCounts, vs, vertexWeight) {
                     var triCount = surface.triangleIndices.length, src = surface.vertices;
                     var triangleIndices = surface.triangleIndices;
                     for (var i = 0; i < triCount; i += 3) {
@@ -60132,36 +60138,27 @@ var LiteMol;
                         addVertex(src, a, vs, c);
                         addVertex(src, b, vs, c);
                     }
+                    var vw = 2 * vertexWeight;
                     for (var i = 0, _b = surface.vertexCount; i < _b; i++) {
-                        var n = counts[i] + 2;
-                        vs[3 * i] = (vs[3 * i] + 2 * src[3 * i]) / n;
-                        vs[3 * i + 1] = (vs[3 * i + 1] + 2 * src[3 * i + 1]) / n;
-                        vs[3 * i + 2] = (vs[3 * i + 2] + 2 * src[3 * i + 2]) / n;
+                        var n = vertexCounts[i] + vw;
+                        vs[3 * i] = (vs[3 * i] + vw * src[3 * i]) / n;
+                        vs[3 * i + 1] = (vs[3 * i + 1] + vw * src[3 * i + 1]) / n;
+                        vs[3 * i + 2] = (vs[3 * i + 2] + vw * src[3 * i + 2]) / n;
                     }
                 }
-                /*
-                 * Smooths the vertices by averaging the neighborhood.
-                 *
-                 * Resets normals. Might replace vertex array.
-                 */
-                function laplacianSmooth(surface, iterCount) {
-                    var _this = this;
-                    if (iterCount === void 0) { iterCount = 1; }
-                    if (iterCount < 1)
-                        iterCount = 0;
-                    if (iterCount === 0)
-                        return Core.Computation.resolve(surface);
-                    return Core.computation(function (ctx) { return __awaiter(_this, void 0, void 0, function () {
-                        var counts, triCount, tris, i, vs, started, i, j, _b, t, time;
+                function laplacianSmoothComputation(ctx, surface, iterCount, vertexWeight) {
+                    return __awaiter(this, void 0, void 0, function () {
+                        var vertexCounts, triCount, tris, i, vs, started, i, j, _b, t, time;
                         return __generator(this, function (_a) {
                             switch (_a.label) {
                                 case 0: return [4 /*yield*/, ctx.updateProgress('Smoothing surface...', true)];
                                 case 1:
                                     _a.sent();
-                                    counts = new Int32Array(surface.vertexCount), triCount = surface.triangleIndices.length;
+                                    vertexCounts = new Int32Array(surface.vertexCount), triCount = surface.triangleIndices.length;
                                     tris = surface.triangleIndices;
                                     for (i = 0; i < triCount; i++) {
-                                        counts[tris[i]] += 2;
+                                        // in a triangle 2 edges touch each vertex, hence the constant.
+                                        vertexCounts[tris[i]] += 2;
                                     }
                                     vs = new Float32Array(surface.vertices.length);
                                     started = Core.Utils.PerformanceMonitor.currentTime();
@@ -60177,7 +60174,7 @@ var LiteMol;
                                             vs[j] = 0;
                                     }
                                     surface.normals = void 0;
-                                    laplacianSmoothIter(surface, counts, vs);
+                                    laplacianSmoothIter(surface, vertexCounts, vs, vertexWeight);
                                     t = surface.vertices;
                                     surface.vertices = vs;
                                     vs = t;
@@ -60194,7 +60191,27 @@ var LiteMol;
                                 case 6: return [2 /*return*/, surface];
                             }
                         });
-                    }); });
+                    });
+                }
+                /*
+                 * Smooths the vertices by averaging the neighborhood.
+                 *
+                 * Resets normals. Might replace vertex array.
+                 */
+                function laplacianSmooth(surface, iterCount, vertexWeight) {
+                    var _this = this;
+                    if (iterCount === void 0) { iterCount = 1; }
+                    if (vertexWeight === void 0) { vertexWeight = 1; }
+                    if (iterCount < 1)
+                        iterCount = 0;
+                    if (iterCount === 0)
+                        return Core.Computation.resolve(surface);
+                    return Core.computation(function (ctx) { return __awaiter(_this, void 0, void 0, function () { return __generator(this, function (_a) {
+                        switch (_a.label) {
+                            case 0: return [4 /*yield*/, laplacianSmoothComputation(ctx, surface, iterCount, (1.1 * vertexWeight) / 1.1)];
+                            case 1: return [2 /*return*/, _a.sent()];
+                        }
+                    }); }); });
                 }
                 Surface.laplacianSmooth = laplacianSmooth;
                 function computeBoundingSphere(surface) {
@@ -60355,6 +60372,7 @@ var LiteMol;
                                 this.state.processCell(i, j, k);
                             }
                         }
+                        this.state.clearEdgeVertexIndexSlice(k);
                     };
                     MarchingCubesComputation.prototype.finish = function () {
                         var vertices = Core.Utils.ChunkedArray.compact(this.state.vertexBuffer);
@@ -60408,10 +60426,20 @@ var LiteMol;
                         this.annotate = !!params.annotationField;
                         if (this.annotate)
                             this.annotationBuffer = Core.Utils.ChunkedArray.forInt32(vertexBufferSize);
-                        this.verticesOnEdges = new Int32Array(3 * this.nX * this.nY * this.nZ);
+                        // two layers of vertex indices. Each vertex has 3 edges associated.
+                        this.verticesOnEdges = new Int32Array(3 * this.nX * this.nY * 2);
                     }
                     MarchingCubesState.prototype.get3dOffsetFromEdgeInfo = function (index) {
-                        return (this.nX * ((this.k + index.k) * this.nY + this.j + index.j) + this.i + index.i) | 0;
+                        return (this.nX * (((this.k + index.k) % 2) * this.nY + this.j + index.j) + this.i + index.i) | 0;
+                    };
+                    /**
+                     * This clears the "vertex index buffer" for the slice that will not be accessed anymore.
+                     */
+                    MarchingCubesState.prototype.clearEdgeVertexIndexSlice = function (k) {
+                        var start = 3 * (this.nX * ((k % 2) * this.nY)) | 0;
+                        var end = 3 * (this.nX * ((k % 2) * this.nY + this.nY - 1) + this.nX - 1) | 0;
+                        for (var i = start; i < end; i++)
+                            this.verticesOnEdges[i] = 0;
                     };
                     MarchingCubesState.prototype.interpolate = function (edgeNum) {
                         var info = MarchingCubes.EdgeIdInfo[edgeNum], edgeId = 3 * this.get3dOffsetFromEdgeInfo(info) + info.e;
@@ -60942,9 +60970,8 @@ var LiteMol;
                         });
                         if (this.exactBoundary)
                             this.boundaryDelta = { dx: 0, dy: 0, dz: 0 };
-                        if (this.density < 0.3)
-                            this.density = 0.3;
-                        //if (this.probeRadius < 0) this.probeRadius = 0;
+                        if (this.density < 0.05)
+                            this.density = 0.05;
                     }
                     return MolecularIsoSurfaceParametersWrapper;
                 }());
@@ -60975,11 +61002,19 @@ var LiteMol;
                         this.y = positions.y;
                         this.z = positions.z;
                         this.atomIndices = inputParameters.atomIndices;
+                        // make the atoms artificially bigger for low resolution surfaces
+                        if (this.parameters.density >= 0.99) {
+                            // so that the number is float and not int32 internally 
+                            this.vdwScaleFactor = 1.000000001;
+                        }
+                        else {
+                            this.vdwScaleFactor = 1 + (1 - this.parameters.density * this.parameters.density);
+                        }
                     }
                     MolecularIsoFieldComputation.prototype.findBounds = function () {
                         for (var _i = 0, _a = this.atomIndices; _i < _a.length; _i++) {
                             var aI = _a[_i];
-                            var r = this.parameters.exactBoundary ? 0 : this.parameters.atomRadius(aI) + this.parameters.probeRadius, xx = this.x[aI], yy = this.y[aI], zz = this.z[aI];
+                            var r = this.parameters.exactBoundary ? 0 : this.vdwScaleFactor * this.parameters.atomRadius(aI) + this.parameters.probeRadius, xx = this.x[aI], yy = this.y[aI], zz = this.z[aI];
                             if (r < 0)
                                 continue;
                             this.minX = Math.min(this.minX, xx - r);
@@ -61078,7 +61113,7 @@ var LiteMol;
                                     case 2:
                                         if (!(currentAtom < _b)) return [3 /*break*/, 5];
                                         aI = this.atomIndices[currentAtom];
-                                        r = this.parameters.atomRadius(aI) + this.parameters.probeRadius;
+                                        r = this.vdwScaleFactor * this.parameters.atomRadius(aI) + this.parameters.probeRadius;
                                         if (r >= 0) {
                                             this.addBall(aI, r);
                                         }
@@ -61161,7 +61196,7 @@ var LiteMol;
                 function computeMolecularSurfaceAsync(parameters) {
                     var _this = this;
                     return Core.computation(function (ctx) { return __awaiter(_this, void 0, void 0, function () {
-                        var field, surface, smoothing;
+                        var field, surface, smoothing, smoothingVertexWeight;
                         return __generator(this, function (_a) {
                             switch (_a.label) {
                                 case 0: return [4 /*yield*/, createMolecularIsoFieldAsync(parameters).run(ctx)];
@@ -61174,7 +61209,16 @@ var LiteMol;
                                 case 3:
                                     surface = _a.sent();
                                     smoothing = (parameters.parameters && parameters.parameters.smoothingIterations) || 1;
-                                    return [4 /*yield*/, Geometry.Surface.laplacianSmooth(surface, smoothing).run(ctx)];
+                                    smoothingVertexWeight = 1.0;
+                                    // low density results in very low detail and large distance between vertices.
+                                    // Applying uniform laplacian smmoth to such surfaces makes the surface a lot smaller 
+                                    // in each iteration. 
+                                    // To reduce this behaviour, the weight of the "central" vertex is increased
+                                    // for low desities to better preserve the shape of the surface.
+                                    if (parameters.parameters && parameters.parameters.density < 1) {
+                                        smoothingVertexWeight = 2 / parameters.parameters.density;
+                                    }
+                                    return [4 /*yield*/, Geometry.Surface.laplacianSmooth(surface, smoothing, smoothingVertexWeight).run(ctx)];
                                 case 4:
                                     surface = _a.sent();
                                     return [2 /*return*/, { surface: surface, usedParameters: field.parameters }];
@@ -63357,9 +63401,7 @@ var LiteMol;
                 }
                 function buildPivotGroupSymmetry(model, radius, pivotsQuery) {
                     var info = model.data.symmetryInfo;
-                    if (!info
-                        || info.spacegroupName === 'P 1'
-                        || (info.cellSize[0] < 1.1 && info.cellSize[1] < 1.1 && info.cellSize[2] < 1.1)) {
+                    if (!info || (info.cellSize[0] < 1.1 && info.cellSize[1] < 1.1 && info.cellSize[2] < 1.1)) {
                         return model;
                     }
                     var pivotIndices;
@@ -63421,9 +63463,7 @@ var LiteMol;
                 }
                 function buildMates(model, radius) {
                     var info = model.data.symmetryInfo;
-                    if (!info
-                        || info.spacegroupName === 'P 1'
-                        || (info.cellSize[0] < 1.1 && info.cellSize[1] < 1.1 && info.cellSize[2] < 1.1)) {
+                    if (!info || (info.cellSize[0] < 1.1 && info.cellSize[1] < 1.1 && info.cellSize[2] < 1.1)) {
                         return model;
                     }
                     var transforms = findMates(model, radius);
@@ -64792,7 +64832,7 @@ var LiteMol;
 (function (LiteMol) {
     var Visualization;
     (function (Visualization) {
-        Visualization.VERSION = { number: "1.6.3", date: "Jan 30 2017" };
+        Visualization.VERSION = { number: "1.6.4", date: "Feb 4 2017" };
     })(Visualization = LiteMol.Visualization || (LiteMol.Visualization = {}));
 })(LiteMol || (LiteMol = {}));
 var LiteMol;
@@ -66055,6 +66095,7 @@ var LiteMol;
                 this.unbindEvents = [];
                 this.models = new Visualization.ModelStore(this);
                 this.events = new Visualization.THREE.EventDispatcher();
+                this.initialResizeTimeout = void 0;
                 this.clearHighlightsCall = function () { return _this.clearHighlights(true); };
                 this.renderFunc = function (time) { return _this.render(time); };
                 this.pickBuffer = new Uint8Array(4);
@@ -66092,7 +66133,12 @@ var LiteMol;
                 this.renderer.clear();
                 this.needsRender();
                 this.renderState.animationFrame = requestAnimationFrame(this.renderFunc);
-                //this.updateSizeInterval = setInterval(() => this.handleResize(), 1000);
+                // sometimes, the renderer DOM element does not initially have the correct size. 
+                // This will hopefully fix the issue in most cases.
+                this.initialResizeTimeout = setTimeout(function () {
+                    _this.initialResizeTimeout = void 0;
+                    _this.handleResize();
+                }, 1000);
             }
             Scene.prototype.updateOptions = function (options) {
                 options = LiteMol.Core.Utils.extend({}, options, this.options);
@@ -66332,6 +66378,10 @@ var LiteMol;
                         e();
                     }
                     catch (_ex) { }
+                }
+                if (this.initialResizeTimeout !== void 0) {
+                    clearTimeout(this.initialResizeTimeout);
+                    this.initialResizeTimeout = void 0;
                 }
                 this.unbindEvents = [];
                 cancelAnimationFrame(this.renderState.animationFrame);
@@ -67206,7 +67256,7 @@ var LiteMol;
                     a = b;
                     b = t;
                 }
-                if (included.add(((a + b) * (a + b + 1) / 2 + b) | 0 /* cantor pairing function */)) {
+                if (included.add((a + b) * (a + b + 1) / 2 + b /* cantor pairing function */)) {
                     ChunkedArray.add2(edges, a, b);
                 }
             }
@@ -69892,7 +69942,7 @@ var LiteMol;
 (function (LiteMol) {
     var Bootstrap;
     (function (Bootstrap) {
-        Bootstrap.VERSION = { number: "1.3.1", date: "Jan 18 2017" };
+        Bootstrap.VERSION = { number: "1.3.3", date: "Feb 17 2017" };
     })(Bootstrap = LiteMol.Bootstrap || (LiteMol.Bootstrap = {}));
 })(LiteMol || (LiteMol = {}));
 /*
@@ -72546,8 +72596,9 @@ var LiteMol;
                     };
                     Default.SurfaceParams = {
                         probeRadius: 1.4,
+                        automaticDensity: true,
                         density: 1.1,
-                        smoothing: 6,
+                        smoothing: 10,
                         isWireframe: false
                     };
                     Default.Transparency = { alpha: 1.0, writeDepth: false };
@@ -72587,6 +72638,10 @@ var LiteMol;
                 var MolVis = LiteMol.Visualization.Molecule;
                 function getTessalation(type, count) {
                     if (type === 'Automatic') {
+                        if (count < 250)
+                            return 5;
+                        if (count < 1000)
+                            return 4;
                         if (count < 75000)
                             return 3;
                         if (count < 250000)
@@ -72597,6 +72652,21 @@ var LiteMol;
                     }
                     var d = Molecule.DetailTypes.indexOf(type) - 1;
                     return Math.max(d, 0);
+                }
+                function getSurfaceDensity(params, count) {
+                    if (!!params.automaticDensity) {
+                        if (count < 1000)
+                            return 1.2;
+                        if (count < 2500000) {
+                            // scale from 1000 to 2.5m so that f(1000)=1.2, f(100k)=0.75, f(2.5m) = 0.1
+                            var a = -0.18610, b = 0.025298, c = 1.3608;
+                            return a * Math.pow(count / 1000, 1 / 3) + b * Math.sqrt(count / 1000) + c;
+                        }
+                        return 0.1;
+                    }
+                    if (params.density !== void 0)
+                        return +params.density;
+                    return 1.0;
                 }
                 function createCartoonParams(tessalation, isAlphaTrace) {
                     return {
@@ -72693,9 +72763,9 @@ var LiteMol;
                                             atomIndices: atomIndices,
                                             parameters: {
                                                 atomRadius: Bootstrap.Utils.vdwRadiusFromElementSymbol(model),
-                                                density: params.density,
+                                                density: getSurfaceDensity(params, atomIndices.length),
                                                 probeRadius: params.probeRadius,
-                                                smoothingIterations: 2 * params.smoothing,
+                                                smoothingIterations: params.smoothing,
                                                 interactive: true
                                             }
                                         }).run(ctx)];
@@ -72808,7 +72878,7 @@ var LiteMol;
                                     return [4 /*yield*/, Geom.Surface.transform(surface, fromFrac.elements).run(ctx)];
                                 case 2:
                                     surface = _a.sent();
-                                    return [4 /*yield*/, Geom.Surface.laplacianSmooth(surface, params.smoothing).run(ctx)];
+                                    return [4 /*yield*/, Geom.Surface.laplacianSmooth(surface, params.smoothing, 4).run(ctx)];
                                 case 3:
                                     surface = _a.sent();
                                     theme = style.theme.template.provider(source, Visualization.Theme.getProps(style.theme));
@@ -74948,7 +75018,7 @@ var LiteMol;
                         isExpanded: false,
                         hideControls: false,
                         collapsedControlsLayout: CollapsedControlsLayout.Outside,
-                        hiddenRegions: []
+                        regionStates: {}
                     }) || this;
                     _this.targets = targets;
                     _this.root = root;
@@ -75978,7 +76048,7 @@ var LiteMol;
 (function (LiteMol) {
     var Plugin;
     (function (Plugin) {
-        Plugin.VERSION = { number: "1.3.0", date: "Jan 18 2017" };
+        Plugin.VERSION = { number: "1.3.1", date: "Feb 4 2017" };
     })(Plugin = LiteMol.Plugin || (LiteMol.Plugin = {}));
 })(LiteMol || (LiteMol = {}));
 /*
@@ -77105,6 +77175,27 @@ var LiteMol;
                         statics.length ? Plugin.React.createElement("div", { className: 'lm-layout-static' }, statics) : void 0,
                         scrollable.length ? Plugin.React.createElement("div", { className: 'lm-layout-scrollable' }, scrollable) : void 0);
                 };
+                Layout.prototype.updateTarget = function (name, regionType, layout) {
+                    var state = this.controller.latestState;
+                    var regionStates = state.regionStates;
+                    var region = this.controller.targets[regionType];
+                    var show;
+                    if (state.hideControls) {
+                        show = regionStates !== void 0 && regionStates[regionType] === 'Sticky' && region.components.length > 0;
+                    }
+                    else if (regionStates && regionStates[regionType] === 'Hidden') {
+                        show = false;
+                    }
+                    else {
+                        show = region.components.length > 0;
+                    }
+                    if (show) {
+                        layout.regions.push(this.renderTarget(region));
+                    }
+                    else {
+                        layout.layoutClass += ' lm-layout-hide-' + name;
+                    }
+                };
                 Layout.prototype.render = function () {
                     var layoutClass = '';
                     var state = this.controller.latestState;
@@ -77131,29 +77222,13 @@ var LiteMol;
                     }
                     var targets = this.controller.targets;
                     var regions = [this.renderTarget(targets[LayoutRegion.Main])];
-                    var hiddenRegions = state.hiddenRegions || [];
-                    var region = targets[LayoutRegion.Top];
-                    if (state.hideControls || !region.components.length || hiddenRegions.indexOf(LayoutRegion.Top) >= 0)
-                        layoutClass += ' lm-layout-hide-top';
-                    else
-                        regions.push(this.renderTarget(region));
-                    region = targets[LayoutRegion.Right];
-                    if (state.hideControls || !region.components.length || hiddenRegions.indexOf(LayoutRegion.Right) >= 0)
-                        layoutClass += ' lm-layout-hide-right';
-                    else
-                        regions.push(this.renderTarget(region));
-                    region = targets[LayoutRegion.Bottom];
-                    if (state.hideControls || !region.components.length || hiddenRegions.indexOf(LayoutRegion.Bottom) >= 0)
-                        layoutClass += ' lm-layout-hide-bottom';
-                    else
-                        regions.push(this.renderTarget(region));
-                    region = targets[LayoutRegion.Left];
-                    if (state.hideControls || !region.components.length || hiddenRegions.indexOf(LayoutRegion.Left) >= 0)
-                        layoutClass += ' lm-layout-hide-left';
-                    else
-                        regions.push(this.renderTarget(region));
-                    var root = targets[LayoutRegion.Root]
-                        .components.map(function (c) { return Plugin.React.createElement(c.view, { controller: c.controller }); });
+                    var layout = { regions: regions, layoutClass: layoutClass };
+                    this.updateTarget('top', LayoutRegion.Top, layout);
+                    this.updateTarget('right', LayoutRegion.Right, layout);
+                    this.updateTarget('bottom', LayoutRegion.Bottom, layout);
+                    this.updateTarget('left', LayoutRegion.Left, layout);
+                    layoutClass = layout.layoutClass;
+                    var root = targets[LayoutRegion.Root].components.map(function (c) { return Plugin.React.createElement(c.view, { controller: c.controller }); });
                     return Plugin.React.createElement("div", { className: 'lm-plugin' },
                         Plugin.React.createElement("div", { className: 'lm-plugin-content ' + layoutType },
                             Plugin.React.createElement("div", { className: layoutClass },
@@ -77640,8 +77715,11 @@ var LiteMol;
                             var params = this.params.style.params;
                             return [
                                 Plugin.React.createElement(Plugin.Controls.Slider, { label: 'Probe Radius', onChange: function (v) { return _this.controller.updateStyleParams({ probeRadius: v }); }, min: 0, max: 6, step: 0.1, value: params.probeRadius }),
-                                Plugin.React.createElement(Plugin.Controls.Slider, { label: 'Smoothing', onChange: function (v) { return _this.controller.updateStyleParams({ smoothing: v }); }, min: 0, max: 10, step: 1, value: params.smoothing, title: 'Number of laplacian smoothing itrations.' }),
-                                Plugin.React.createElement(Plugin.Controls.Slider, { label: 'Detail', onChange: function (v) { return _this.controller.updateStyleParams({ density: v }); }, min: 0.3, max: 3, step: 0.1, value: params.density, title: 'Determines the size of a grid cell.' }),
+                                Plugin.React.createElement(Plugin.Controls.Slider, { label: 'Smoothing', onChange: function (v) { return _this.controller.updateStyleParams({ smoothing: v }); }, min: 0, max: 20, step: 1, value: params.smoothing, title: 'Number of laplacian smoothing itrations.' }),
+                                Plugin.React.createElement(Plugin.Controls.Toggle, { onChange: function (v) { return _this.controller.updateStyleParams({ automaticDensity: v }); }, value: params.automaticDensity, label: 'Auto Detail' }),
+                                (params.automaticDensity
+                                    ? void 0
+                                    : Plugin.React.createElement(Plugin.Controls.Slider, { label: 'Detail', onChange: function (v) { return _this.controller.updateStyleParams({ density: v }); }, min: 0.1, max: 3, step: 0.1, value: params.density, title: 'Determines the size of a grid cell (size = 1/detail).' })),
                                 Plugin.React.createElement(Plugin.Controls.Toggle, { onChange: function (v) { return _this.controller.updateStyleParams({ isWireframe: v }); }, value: params.isWireframe, label: 'Wireframe' })
                             ];
                         };

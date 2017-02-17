@@ -12802,6 +12802,7 @@ declare namespace LiteMol.Core.Formats.Molecule.PDB {
     }
     class CrystStructureInfo {
         record: string;
+        private getValue(start, len);
         toCifCategory(id: string): {
             cell: CIF.Category | undefined;
             symm: CIF.Category | undefined;
@@ -13148,7 +13149,7 @@ declare namespace LiteMol.Core.Geometry {
     namespace Surface {
         function computeNormalsImmediate(surface: Surface): void;
         function computeNormals(surface: Surface): Computation<Surface>;
-        function laplacianSmooth(surface: Surface, iterCount?: number): Computation<Surface>;
+        function laplacianSmooth(surface: Surface, iterCount?: number, vertexWeight?: number): Computation<Surface>;
         function computeBoundingSphere(surface: Surface): Computation<Surface>;
         function transformImmediate(surface: Surface, t: number[]): void;
         function transform(surface: Surface, t: number[]): Computation<Surface>;
@@ -14165,6 +14166,7 @@ declare namespace LiteMol.Visualization {
         camera: Camera;
         models: ModelStore;
         events: THREE.EventDispatcher;
+        private initialResizeTimeout;
         updateOptions(options: SceneOptions): void;
         constructor(element: HTMLElement, options?: SceneOptions);
         private setupMouse();
@@ -15407,6 +15409,7 @@ declare namespace LiteMol.Bootstrap.Visualization.Molecule {
     }
     interface SurfaceParams {
         probeRadius: number;
+        automaticDensity?: boolean;
         density: number;
         smoothing: number;
         isWireframe: boolean;
@@ -15998,11 +16001,14 @@ declare namespace LiteMol.Bootstrap.Components {
         constructor(cssClass: string);
     }
     function makeEmptyTargets(): LayoutTarget[];
+    type RegionState = 'Hidden' | 'Sticky' | 'Default';
     interface LayoutState {
         isExpanded: boolean;
         hideControls: boolean;
         collapsedControlsLayout: CollapsedControlsLayout;
-        hiddenRegions: LayoutRegion[];
+        regionStates?: {
+            [region: number]: RegionState;
+        };
     }
     class Layout extends Component<LayoutState> {
         targets: LayoutTarget[];
@@ -16515,6 +16521,7 @@ declare namespace LiteMol.Plugin.Views {
 declare namespace LiteMol.Plugin.Views {
     class Layout extends View<Bootstrap.Components.Layout, {}, {}> {
         private renderTarget(target);
+        private updateTarget(name, regionType, layout);
         render(): JSX.Element;
     }
 }
