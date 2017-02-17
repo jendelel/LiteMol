@@ -39,7 +39,7 @@ namespace LiteMol.PrankWeb {
             return pockets.map((pocket, i) => {
                 let scoreSum = pocket.residueIds.map((i) => seq.scores[indexMap.get(i) !]).reduce((acc, val) => acc + val, 0);
                 // Round the score to 3 digit average.
-                return (Math.round((scoreSum / pocket.residueIds.length) * 1000) / 1000).toString();
+                return (scoreSum / pocket.residueIds.length).toFixed(3);
             })
         }
 
@@ -49,7 +49,7 @@ namespace LiteMol.PrankWeb {
             let controls: any[] = [];
             let conservationAvg: string[] = this.calcConservationAvg();
             if (pockets.length > 0) {
-                controls.push(<h2>Pockets:</h2>);
+                controls.push(<h2 className="text-center">Pockets</h2>);
             }
             pockets.forEach((pocket, i) => {
                 controls.push(
