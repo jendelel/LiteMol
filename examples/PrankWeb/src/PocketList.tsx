@@ -6,19 +6,6 @@ namespace LiteMol.PrankWeb {
     import Bootstrap = LiteMol.Bootstrap;
     import React = LiteMol.Plugin.React; // this is to enable the HTML-like syntax
 
-    // export class PocketController extends Bootstrap.Components.Component<{ pockets: PrankPocket[] }> {
-
-    //     constructor(context: Bootstrap.Context) {
-    //         super(context, { pockets: [] });
-
-    //         Bootstrap.Event.Tree.NodeAdded.getStream(context).subscribe(e => {
-    //             if (e.data.type === Prediction) {
-    //                 this.setState({ pockets: e.data.props.pockets });
-    //             }
-    //         })
-    //     }
-    // }
-
     class CacheItem {
         constructor(query: Query.Builder, selectionInfo: Bootstrap.Interactivity.Molecule.SelectionInfo) {
             this.query = query
@@ -33,7 +20,7 @@ namespace LiteMol.PrankWeb {
         calcConservationAvg() {
             let seq = this.props.data.sequence.props.seq;
             let pockets = this.props.data.prediction.props.pockets;
-            if (!seq.scores || seq.scores.length <= 0) return pockets.map(()=> "N/A");
+            if (!seq.scores || seq.scores.length <= 0) return pockets.map(() => "N/A");
             let indexMap = LiteMol.Core.Utils.FastMap.create<number, number>();
             seq.indices.forEach((element, i) => { indexMap.set(element, i); });
             return pockets.map((pocket, i) => {
@@ -67,13 +54,18 @@ namespace LiteMol.PrankWeb {
 
         componentWillMount() {
             let ctx = this.props.plugin.context;
-            Bootstrap.Command.Entity.SetVisibility.getStream(this.props.plugin.context).subscribe(
-                e => {
-                    let pocketEntity = ctx.select(this.props.pocket.name)[0] as Bootstrap.Entity.Any;
-                    if (pocketEntity && e.data.entity.id === pocketEntity.id) {
-                        this.setState({ isVisible: e.data.visible });
+            Bootstrap.Event.Tree.NodeUpdated.getStream(ctx).subscribe(e => {
+                let entityRef = e.data.ref; // Pocket name whose visibility just changed.
+                let pocket = this.props.pocket;
+                if (entityRef === pocket.name) {
+                    console.log(e.data)
+                    // It should still be visible even if some children are invisible.
+                    let visible = (e.data.state.visibility === Bootstrap.Entity.Visibility.Full || e.data.state.visibility === Bootstrap.Entity.Visibility.Partial);
+                    if (this.state.isVisible !== visible) {
+                        this.setState({ isVisible: visible });
                     }
-                });
+                }
+            });
         }
 
         private getPocket() {

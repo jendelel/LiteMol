@@ -35,32 +35,37 @@ namespace LiteMol.PrankWeb {
         indexMap: LiteMol.Core.Utils.FastMap<number, number>;
         lastNumber: number | undefined;
         lastMouseOverFeature: any | undefined;
+        pVizSeqView: any = void 0;
 
         getResidue(seqIndex: number, model: Bootstrap.Entity.Molecule.Model) {
             let cacheId = `__resSelectionInfo-${seqIndex}`
-            let queryFn: () => Query.Builder = () => Core.Structure.Query.residuesById(seqIndex)
-            return this.getCacheItem(cacheId, queryFn, model);
+            let result = this.getCacheItem(cacheId, model);
+            if (!result) result = this.setCacheItem(cacheId, Core.Structure.Query.residuesById(seqIndex), model)
+            return result;
         }
 
         getPocket(pocket: PrankPocket, model: Bootstrap.Entity.Molecule.Model) {
             let cacheId = `__resSelectionInfo-${pocket.name}-${pocket.rank}`
-            let queryFn: () => Query.Builder = () => Core.Structure.Query.atomsById.apply(null, pocket.surfAtomIds)
-            return this.getCacheItem(cacheId, queryFn, model);
+            let result = this.getCacheItem(cacheId, model);
+            if (!result) result = this.setCacheItem(cacheId, Core.Structure.Query.atomsById.apply(null, pocket.surfAtomIds), model)
+            return result;
         }
 
-        getCacheItem(cacheId: string, queryFn: () => Query.Builder, model: Bootstrap.Entity.Molecule.Model) {
-            let ctx = this.controller.context
-            let cache = ctx.entityCache;
+        setCacheItem(cacheId: string, query: Query.Builder, model: Bootstrap.Entity.Molecule.Model) {
+            let cache = this.controller.context.entityCache;
+            let elements = Core.Structure.Query.apply(query, model.props.model).unionAtomIndices();
+            let selection = Bootstrap.Interactivity.Info.selection(model, elements)
+            let selectionInfo = Bootstrap.Interactivity.Molecule.transformInteraction(selection) !;
+            let item = new CacheItem(query, selectionInfo)
+            cache.set(model, cacheId, item)
+            return item;
+        }
+
+        getCacheItem(cacheId: string, model: Bootstrap.Entity.Molecule.Model) {
+            let cache = this.controller.context.entityCache;
             let item = cache.get<CacheItem>(model, cacheId);
-            if (!item) {
-                let selectionQ = queryFn();
-                let elements = Core.Structure.Query.apply(selectionQ, model.props.model).unionAtomIndices();
-                let selection = Bootstrap.Interactivity.Info.selection(model, elements)
-                let selectionInfo = Bootstrap.Interactivity.Molecule.transformInteraction(selection) !;
-                item = new CacheItem(selectionQ, selectionInfo)
-                cache.set(model, cacheId, item)
-            }
-            return item
+            if (!item) return void 0;
+            return item;
         }
 
         addPocketFeatures(features: Feature[]) {
@@ -90,38 +95,58 @@ namespace LiteMol.PrankWeb {
                     }
                     lastResNum = resNum;
                 })
-                features.push(new Feature("Pockets", `${pockets[pockets.length - 1].name} col${i % 6}`, lastStart, lastResNum, pocket.rank.toString()))
+                features.push(new Feature("Pockets", `${pocket.name} col${i % 6}`, lastStart, lastResNum, pocket.rank.toString()))
             });
 
         }
 
         componentDidMount() {
-            this.renderPViz();
+            this.subscribe(this.controller.state, state => {
+                this.updatePViz();
+            });
+            this.initPViz();
         }
 
         componentDidUpdate() {
-            this.renderPViz();
+            this.updatePViz();
         }
 
-        renderPViz() {
+        initPViz() {
             let seq = this.controller.latestState.seq;
+            console.log(seq);
             if (seq.seq.length <= 0) return; // Sequence isn't loaded yet.
             let pviz = getPviz();
             let pockets = this.controller.latestState.pockets;
 
-            var seqEntry = new pviz.SeqEntry({ sequence: seq.seq.join("") });
+            this.pVizSeqView = new pviz.SeqEntry({ sequence: seq.seq.join("") });
             new pviz.SeqEntryAnnotInteractiveView({
-                model: seqEntry, el: '#seqView',
+                model: this.pVizSeqView, el: '#seqView',
                 xChangeCallback: (pStart: number, pEnd: number) => {
                     this.onLetterMouseEnter(Math.round(pStart));
                 }
             }).render();
 
+            this.updatePViz();
+        }
+
+        updatePViz() {
+            if (!this.pVizSeqView) this.initPViz();
+            if (!this.pVizSeqView) return; // If something went wrong! 
+            // Clear pViz features and callbacks.
+            this.pVizSeqView.clear();
+            let pViz = getPviz();
+            pViz.FeatureDisplayer.mouseoverCallBacks = {};
+            pViz.FeatureDisplayer.mouseoutCallBacks = {};
+
+            let seq = this.controller.latestState.seq;
+            if (seq.seq.length <= 0) return; // Sequence isn't loaded yet.
+
             let features: Array<Feature> = []
-            this.addPocketFeatures(features);
+            this.addPocketFeatures(features); // Add pocket features.
             let pocketFeatureTypes = features.map((feature) => feature.type);
 
-            pviz.FeatureDisplayer.addMouseoverCallback(pocketFeatureTypes, (feature: any) => {
+            // Add mouse callbacks.
+            pViz.FeatureDisplayer.addMouseoverCallback(pocketFeatureTypes, (feature: any) => {
                 this.selectAndDisplayToastPocket(this.lastMouseOverFeature, false);
                 this.lastMouseOverFeature = this.parsePocketName(feature.type);
                 this.selectAndDisplayToastPocket(this.lastMouseOverFeature, true);
@@ -135,11 +160,11 @@ namespace LiteMol.PrankWeb {
             if (scores != null && scores.length >= 0) {
                 scores.forEach((score, i) => {
                     let s = score >= 0 ? score : 0;
-                    let s2 = (s * 10).toFixed(0); // There are 11 shades of gray with selector score0, score1, ..., score10.
+                    let s2 = (s * 10).toFixed(0); // There are 11 shades with selector score0, score1, ..., score10.
                     features.push(new Feature("Conservation", "score" + s2, i, i, s.toFixed(2)));
                 });
             }
-            seqEntry.addFeatures(features);
+            this.pVizSeqView.addFeatures(features);
         }
 
         onLetterMouseEnter(seqNumber?: number) {
@@ -227,32 +252,45 @@ namespace LiteMol.PrankWeb {
         }
     }
 
-    export class SequenceController extends Bootstrap.Components.Component<{ seq: Sequence, pockets: PrankPocket[], pocketVisibility: boolean[] }> {
+    export class SequenceController extends Bootstrap.Components.Component<{ seq: Sequence, pockets: PrankPocket[], pocketVisibility: boolean[], version: number }> {
         constructor(context: Bootstrap.Context) {
-            super(context, { seq: { indices: [], seq: [], scores: [] }, pockets: [], pocketVisibility: [] });
+            super(context, { seq: { indices: [], seq: [], scores: [] }, pockets: [], pocketVisibility: [], version: 0 });
 
             Bootstrap.Event.Tree.NodeAdded.getStream(context).subscribe(e => {
                 if (e.data.type === SequenceEntity) {
-                    this.setState({ seq: e.data.props.seq, pockets: this.latestState.pockets });
+                    this.setState({ seq: e.data.props.seq });
                 } else if (e.data.type === Prediction) {
                     let pockets = e.data.props.pockets;
-                    this.setState({ seq: this.latestState.seq, pockets, pocketVisibility: pockets.map(()=>true) });
+                    this.setState({ pockets, pocketVisibility: pockets.map(() => true) });
                 }
             })
 
-            // Subscribe to visibility changed event.
-            Bootstrap.Command.Entity.SetVisibility.getStream(context).subscribe(
-                e => {
-                    let entityRef = e.data.entity.ref; // Pocket name whose visibility just changed.
-                    let pockets = this.latestState.pockets;
-                    let pocketVisibility = this.latestState.pocketVisibility;
-                    pockets.forEach((pocket, i)=> {
-                        if (pocket.name == entityRef) {
-                            pocketVisibility[i] = e.data.visible;
-                        }
-                    })
-                    this.setState({seq: this.latestState.seq, pockets, pocketVisibility});
-                });
+            // Subscribe to get updates about visibility of pockets.
+            Bootstrap.Event.Tree.NodeUpdated.getStream(context).subscribe(e => {
+                let entityRef = e.data.ref; // Pocket name whose visibility just changed.
+                let pockets = this.latestState.pockets;
+                let changed = false;
+                let pocketVisibility = this.latestState.pocketVisibility;
+
+                let i = 0;
+                for (let pocket of pockets) {
+                    if (pocket.name !== entityRef) {
+                        i++;
+                        continue;
+                    }
+                    // It should still be visible even if some children are invisible.
+                    let visible = (e.data.state.visibility === Bootstrap.Entity.Visibility.Full || e.data.state.visibility === Bootstrap.Entity.Visibility.Partial);
+                    if (pocketVisibility[i] !== visible) {
+                        pocketVisibility[i] = visible;
+                        changed = true;
+                    }
+                    break;
+                }
+                if (changed) {
+                    // Keeping version field in the state, so that event about state update is fired. 
+                    this.setState({ pockets, pocketVisibility, version: this.latestState.version + 1 });
+                }
+            });
         }
     }
 }
