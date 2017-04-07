@@ -22,8 +22,12 @@ namespace LiteMol.PrankWeb {
         return plugin;
     }
 
+    // Div that LiteMol mounts into.
     let appNode = document.getElementById('app') !
+    // Div that control panel mounts into.
     let pocketNode = document.getElementById('pocket-list') !
+
+    // Specify what data to display.
     let inputType: string = appNode.getAttribute("data-input-type") !
     let inputId: string = appNode.getAttribute("data-input-id") !
     App.render(create(appNode), inputType, inputId, pocketNode);
