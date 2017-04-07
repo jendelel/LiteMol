@@ -17,9 +17,13 @@ namespace LiteMol.PrankWeb.App {
 
         load() {
             this.setState({isLoading: true, error: void 0});
+            // Load data.
             DataLoader.loadData(this.props.plugin, this.props.inputType,this.props.inputId)
+                // Visualize the data
                 .then((val: {plugin:Plugin.Controller, data:DataLoader.PrankData})=>DataLoader.visualizeData(val.plugin, val.data))
+                // Everything went well, change the loading state.
                 .then((data)=> this.setState({isLoading:false, data}))
+                // Everything went wrong, change the loading state and set the error msg.
                 .catch((e)=> this.setState({isLoading:false, error:'' + e}));
         }
         
