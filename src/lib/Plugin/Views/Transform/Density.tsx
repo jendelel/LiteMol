@@ -32,7 +32,6 @@ namespace LiteMol.Plugin.Views.Transform.Density {
     export class ParseData extends Transform.ControllerBase<Bootstrap.Components.Transform.Controller<Transformer.Density.ParseDataParams>> {        
         protected renderControls() {            
             let params = this.params;
-            let normalize = params.normalize!;
             let round = Bootstrap.Utils.round;
             if (this.isUpdate) {
                 let data = (this.controller.entity as Bootstrap.Entity.Density.Data).props.data;
@@ -41,15 +40,12 @@ namespace LiteMol.Plugin.Views.Transform.Density {
                     <Controls.RowText label='Sigma' value={round(data.valuesInfo.sigma, 3)} />
                     <Controls.RowText label='Mean' value={round(data.valuesInfo.mean, 3)} />
                     <Controls.RowText label='Value Range' value={`[${round(data.valuesInfo.min, 3)}, ${round(data.valuesInfo.max, 3)}]`} />
-                    <Controls.Toggle onChange={v => this.controller.updateParams({ normalize: v }) } value={normalize} label='Normalized' />
                 </div>;
             } 
                         
             return <div>
                 <Controls.OptionsGroup options={LiteMol.Core.Formats.Density.SupportedFormats.All} caption={s => s.name} current={params.format}
                         onChange={(o) => this.updateParams({ format: o }) } label='Format' />
-                <Controls.Toggle 
-                    onChange={v => this.controller.updateParams({ normalize: v }) } value={normalize} label='Normalized' />
             </div>
         }        
     }
@@ -57,9 +53,18 @@ namespace LiteMol.Plugin.Views.Transform.Density {
     export class CreateVisual extends Transform.ControllerBase<Bootstrap.Components.Transform.DensityVisual<Transformer.Density.CreateVisualParams, 'style'>> {        
         
         private surface() {           
-            let data = Bootstrap.Tree.Node.findClosestNodeOfType(this.transformSourceEntity, [Bootstrap.Entity.Density.Data]) as Bootstrap.Entity.Density.Data;           
-            let params = this.params.style.params as Bootstrap.Visualization.Density.Params;
-            let isSigma = params.isoValueType !== Bootstrap.Visualization.Density.IsoValueType.Absolute;
+            const data = Bootstrap.Tree.Node.findClosestNodeOfType(this.transformSourceEntity, [Bootstrap.Entity.Density.Data]) as Bootstrap.Entity.Density.Data;           
+            const params = this.params.style.params as Bootstrap.Visualization.Density.Params;
+            const isSigma = params.isoValueType !== Bootstrap.Visualization.Density.IsoValueType.Absolute;
+            const values = data.props.data.valuesInfo;
+
+            const min = isSigma 
+                ? (values.min - values.mean) / values.sigma
+                : values.min;
+            
+            const max = isSigma 
+                ? (values.max - values.mean) / values.sigma
+                : values.max;
 
             return <IsoValue 
                 view={this}
@@ -72,9 +77,7 @@ namespace LiteMol.Plugin.Views.Transform.Density {
                         this.controller.updateStyleParams({ isoValue: isoValueAbsoluteToSigma(data.props.data, params.isoValue, -5, 5), isoValueType: v });
                     }
                 }}
-                min={isSigma ? -5 : data.props.data.valuesInfo.min} max={isSigma ? 5 : data.props.data.valuesInfo.max} 
-                isSigma={params.isoValueType !== Bootstrap.Visualization.Density.IsoValueType.Absolute}
-                value={params.isoValue!} />;
+                min={min} max={max}  isSigma={isSigma} value={params.isoValue} />;
         }
         
         private colors() {                      
@@ -129,9 +132,10 @@ namespace LiteMol.Plugin.Views.Transform.Density {
                         this.controller.updateStyleParams({ isoValue: isoValueAbsoluteToSigma(data.props.data, visualParams.isoValue, params.isoSigmaMin, params.isoSigmaMax), isoValueType: v });
                     }
                 }}
-                min={isSigma ? params.isoSigmaMin! : data.props.data.valuesInfo.min} max={isSigma ? params.isoSigmaMax! : data.props.data.valuesInfo.max} 
-                isSigma={visualParams.isoValueType !== Bootstrap.Visualization.Density.IsoValueType.Absolute}
-                value={visualParams.isoValue!} />; 
+                min={isSigma ? params.isoSigmaMin : data.props.data.valuesInfo.min} 
+                max={isSigma ? params.isoSigmaMax : data.props.data.valuesInfo.max} 
+                isSigma={isSigma}
+                value={visualParams.isoValue} />; 
         }
         
         private colors() {          

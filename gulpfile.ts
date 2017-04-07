@@ -65,7 +65,8 @@ var ExampleNames = [
     'BinaryCIFInspect',
     'Transforms',
     'Channels',
-    'PrankWeb'
+    'PrankWeb',
+    'AngularExample'
 ];
 
 var ViewerAndExamplesTasks = [];

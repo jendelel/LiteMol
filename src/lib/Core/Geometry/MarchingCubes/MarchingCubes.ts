@@ -120,34 +120,34 @@ namespace LiteMol.Core.Geometry.MarchingCubes {
         triangleBuffer: Core.Utils.ChunkedArray<number>;
 
         private get3dOffsetFromEdgeInfo(index: Index) {
-            return (this.nX * (((this.k + index.k) % 2) * this.nY + this.j + index.j) + this.i + index.i) | 0;
+            return (this.nX * (((this.k + index.k) % 2) * this.nY + this.j + index.j) + this.i + index.i);
         }
 
         /**
          * This clears the "vertex index buffer" for the slice that will not be accessed anymore.
          */
         clearEdgeVertexIndexSlice(k: number) {
-            const start = 3 * (this.nX * ((k % 2) * this.nY)) | 0;
-            const end = 3 * (this.nX * ((k % 2) * this.nY + this.nY - 1) + this.nX - 1) | 0;
+            // clear either the top or bottom half of the buffer...
+            const start = k % 2 === 0 ? 0 : 3 * this.nX * this.nY;
+            const end = k % 2 === 0 ? 3 * this.nX * this.nY : this.verticesOnEdges.length;
             for (let i = start; i < end; i++) this.verticesOnEdges[i] = 0;
         }
 
         private interpolate(edgeNum: number) {
-            let info = EdgeIdInfo[edgeNum],
+            const info = EdgeIdInfo[edgeNum],
                 edgeId = 3 * this.get3dOffsetFromEdgeInfo(info) + info.e;
 
-            let ret = this.verticesOnEdges[edgeId];
+            const ret = this.verticesOnEdges[edgeId];
             if (ret > 0) return (ret - 1) | 0;
 
-            let edge = CubeEdges[edgeNum];
-            let a = edge.a, b = edge.b,
-                li = a.i + this.i, lj = a.j + this.j, lk = a.k + this.k,
-                hi = b.i + this.i, hj = b.j + this.j, hk = b.k + this.k,
-                v0 = this.scalarField.get(li, lj, lk),
-                v1 = this.scalarField.get(hi, hj, hk),
-                t = (this.isoLevel - v0) / (v0 - v1);
+            const edge = CubeEdges[edgeNum];
+            const a = edge.a, b = edge.b;
+            const li = a.i + this.i, lj = a.j + this.j, lk = a.k + this.k;
+            const hi = b.i + this.i, hj = b.j + this.j, hk = b.k + this.k;
+            const v0 = this.scalarField.get(li, lj, lk), v1 = this.scalarField.get(hi, hj, hk);
+            const t = (this.isoLevel - v0) / (v0 - v1);
 
-            let id = Utils.ChunkedArray.add3(
+            const id = Utils.ChunkedArray.add3(
                 this.vertexBuffer,
                 li + t * (li - hi),
                 lj + t * (lj - hj),
@@ -156,7 +156,9 @@ namespace LiteMol.Core.Geometry.MarchingCubes {
             this.verticesOnEdges[edgeId] = id + 1;
 
             if (this.annotate) {
-                Utils.ChunkedArray.add(this.annotationBuffer, this.annotationField!.get(this.i, this.j, this.k));
+                let a = t < 0.5 ? this.annotationField!.get(li, lj, lk) : this.annotationField!.get(hi, hj, hk);
+                if (a < 0) a = t < 0.5 ? this.annotationField!.get(hi, hj, hk) : this.annotationField!.get(li, lj, lk);
+                Utils.ChunkedArray.add(this.annotationBuffer, a);
             }
 
             return id;

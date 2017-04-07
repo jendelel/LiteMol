@@ -22,6 +22,9 @@ namespace LiteMol.Core.Formats.Density {
         } 
     }
 
+    /**
+     * A field with the Z axis being the slowest and the X being the fastest.
+     */
     export class Field3DZYX implements Field3D {        
         private nX: number;
         private nY: number;
@@ -58,122 +61,60 @@ namespace LiteMol.Core.Formats.Density {
         }        
     }
 
+    export interface Spacegroup {
+        number: number,
+        size: number[],
+        angles: number[],
+        basis: { x: number[]; y: number[]; z: number[] };
+    }
+
     /**
      * Represents electron density data.
      */
     export interface Data {
-        /**
-         * Crystal cell size.
-         */
-        cellSize: number[];
+        name?: string,
 
-        /**
-         * Crystal cell angles.
-         */
-        cellAngles: number[];
+        spacegroup: Spacegroup,
+      
+        box: {
+            /** Origin of the data block in fractional coords. */
+            origin: number[],
 
-        /**
-         * Origin of the cell
-         */
-        origin: number[];
+            /** Dimensions oft he data block in fractional coords. */
+            dimensions: number[],
+
+            /** X, Y, Z dimensions of the data matrix. */
+            sampleCount: number[]
+        },
 
         /**
          * 3D volumetric data.
          */
-        data: Field3D;
-
-        /**
-         * X, Y, Z dimensions of the data matrix.
-         */
-        dataDimensions: number[];
-
-        /**
-         * The basis of the space.
-         */
-        basis: { x: number[]; y: number[]; z: number[] };
-
-        /**
-         * Was the skew matrix present in the input?
-         */
-        hasSkewMatrix: boolean;
-
-        /**
-         * Column major ordered skew matrix.
-         */
-        skewMatrix: number[];
+        data: Field3D,
 
         /**
          * Information about the min/max/mean/sigma values.
          */
-        valuesInfo: { min: number; max: number; mean: number; sigma: number };
-        
-        /** 
-         * Additional attributes.
-         */
-        attributes: { [key: string]: any }
-        
-        /**
-         * Are the data normalized?
-         */
-        isNormalized: boolean;            
+        valuesInfo: { min: number; max: number; mean: number; sigma: number }  
     }
 
-    export namespace Data {
-        
-        export function create(
-            cellSize: number[], cellAngles: number[], origin: number[], hasSkewMatrix: boolean, skewMatrix: number[],
-            data: Field3D, dataDimensions: number[], basis: { x: number[]; y: number[]; z: number[] },
-            valuesInfo: { min: number; max: number; mean: number; sigma: number }, attributes?: { [key: string]: any }): Data {
+    export function createSpacegroup(number: number, size: number[], angles: number[]): Spacegroup {
+        const alpha = (Math.PI / 180.0) * angles[0], beta = (Math.PI / 180.0) * angles[1], gamma = (Math.PI / 180.0) * angles[2];
+        const xScale = size[0], yScale = size[1], zScale = size[2];
 
-            return {
-                cellSize: cellSize,
-                cellAngles: cellAngles,
-                origin: origin,
-                hasSkewMatrix: hasSkewMatrix,
-                skewMatrix: skewMatrix,
-                data: data,
-                basis: basis,
-                dataDimensions: dataDimensions,
-                valuesInfo: valuesInfo,
-                attributes: attributes ? attributes : { },
-                isNormalized: false
-            };
-        }
+        const z1 = Math.cos(beta),
+              z2 = (Math.cos(alpha) - Math.cos(beta) * Math.cos(gamma)) / Math.sin(gamma),
+              z3 = Math.sqrt(1.0 - z1 * z1 - z2 * z2);
 
+        const x = [xScale, 0.0, 0.0];
+        const y = [Math.cos(gamma) * yScale, Math.sin(gamma) * yScale, 0.0];
+        const z = [z1 * zScale, z2 * zScale, z3 * zScale];
 
-        export function normalize(densityData: Data) {
-            if (densityData.isNormalized) return;
-            
-            let data = densityData.data, { mean, sigma } = densityData.valuesInfo;
-            let min = Number.POSITIVE_INFINITY, max = Number.NEGATIVE_INFINITY;
-            for (let i = 0, _l = data.length; i < _l; i++) {
-                let v = (data.getAt(i) - mean) / sigma;
-                data.setAt(i, v);
-                if (v < min) min = v;
-                if (v > max) max = v;
-            }
-
-            densityData.valuesInfo.min = min;
-            densityData.valuesInfo.max = max;
-            densityData.isNormalized = true;
-        }
-
-        export function denormalize(densityData: Data) {
-            if (!densityData.isNormalized) return;
-            
-            let data = densityData.data, { mean, sigma } = densityData.valuesInfo;
-            let min = Number.POSITIVE_INFINITY, max = Number.NEGATIVE_INFINITY;
-            for (let i = 0, _l = data.length; i < _l; i++) {
-                let v = sigma * data.getAt(i) + mean;
-                data.setAt(i, v);
-                if (v < min) min = v;
-                if (v > max) max = v;
-            }
-
-            densityData.valuesInfo.min = min;
-            densityData.valuesInfo.max = max;
-            densityData.isNormalized = false;
-        }
+        return {
+            number,
+            size,
+            angles,
+            basis: { x, y, z }
+        };
     }
-    
 }

@@ -11177,7 +11177,7 @@ var LiteMol;
 (function (LiteMol) {
     var Core;
     (function (Core) {
-        Core.VERSION = { number: "3.0.4", date: "Feb 17 2017" };
+        Core.VERSION = { number: "3.1.1", date: "March 20 2017" };
     })(Core = LiteMol.Core || (LiteMol.Core = {}));
 })(LiteMol || (LiteMol = {}));
 /*
@@ -12180,10 +12180,10 @@ var LiteMol;
             (function (TokenIndexBuilder) {
                 function resize(builder) {
                     // scale the size using golden ratio, because why not.
-                    var newBuffer = new Int32Array((1.61 * builder.tokens.length) | 0);
+                    var newBuffer = new Int32Array(Math.round(1.61 * builder.tokens.length));
                     newBuffer.set(builder.tokens);
                     builder.tokens = newBuffer;
-                    builder.tokensLenMinus2 = (newBuffer.length - 2) | 0;
+                    builder.tokensLenMinus2 = newBuffer.length - 2;
                 }
                 function addToken(builder, start, end) {
                     if (builder.count >= builder.tokensLenMinus2) {
@@ -12195,7 +12195,7 @@ var LiteMol;
                 TokenIndexBuilder.addToken = addToken;
                 function create(size) {
                     return {
-                        tokensLenMinus2: (size - 2) | 0,
+                        tokensLenMinus2: Math.round(size) - 2,
                         count: 0,
                         tokens: new Int32Array(size)
                     };
@@ -12476,7 +12476,7 @@ var LiteMol;
                     function isResidueNucleotide(atoms, residues, entities, index) {
                         if (aminoAcidNames[residues.name[index]] || entities.type[residues.entityIndex[index]] !== 'polymer')
                             return false;
-                        var o5 = false, c3 = false, n3 = false, p = false, names = atoms.name, assigned = 0;
+                        var names = atoms.name, assigned = 0;
                         var start = residues.atomStartIndex[index], end = residues.atomEndIndex[index];
                         // test for single atom instances
                         if (end - start === 1 && !residues.isHet[start] && names[start] === 'P') {
@@ -12484,26 +12484,14 @@ var LiteMol;
                         }
                         for (var i = start; i < end; i++) {
                             var n = names[i];
-                            if (!o5 && n === "O5'") {
-                                o5 = true;
+                            if (n === "O5'" || n === "C3'" || n === "N3" || n === "P") {
                                 assigned++;
                             }
-                            else if (!c3 && n === "C3'") {
-                                c3 = true;
-                                assigned++;
+                            if (assigned >= 3) {
+                                return true;
                             }
-                            else if (!n3 && n === 'N3') {
-                                n3 = true;
-                                assigned++;
-                            }
-                            else if (!p && n === 'P') {
-                                p = true;
-                                assigned++;
-                            }
-                            if (assigned === 4)
-                                break;
                         }
-                        return o5 && c3 && n3 && p;
+                        return false;
                     }
                     function analyzeSecondaryStructure(atoms, residues, entities, start, end, elements) {
                         var asymId = residues.asymId, entityIndex = residues.entityIndex, currentType = 0 /* None */, currentElementStartIndex = start, currentResidueIndex = start, residueCount = end;
@@ -13126,6 +13114,8 @@ var LiteMol;
                                 // ignored
                                 //77 - 78        LString(2)      Element symbol, right-justified.   
                                 ELEMENT: 13
+                                //79 - 80        LString(2)      Charge on the atom.      
+                                // ignored
                             };
                             var columnCount = 14;
                             for (var i = 0; i < this.atomCount; i++) {
@@ -13782,6 +13772,9 @@ var LiteMol;
                         data[i] = value;
                     }
                 }
+                /**
+                 * A field with the Z axis being the slowest and the X being the fastest.
+                 */
                 var Field3DZYX = (function () {
                     function Field3DZYX(data, dimensions) {
                         this.data = data;
@@ -13815,61 +13808,21 @@ var LiteMol;
                     return Field3DZYX;
                 }());
                 Density.Field3DZYX = Field3DZYX;
-                var Data;
-                (function (Data) {
-                    function create(cellSize, cellAngles, origin, hasSkewMatrix, skewMatrix, data, dataDimensions, basis, valuesInfo, attributes) {
-                        return {
-                            cellSize: cellSize,
-                            cellAngles: cellAngles,
-                            origin: origin,
-                            hasSkewMatrix: hasSkewMatrix,
-                            skewMatrix: skewMatrix,
-                            data: data,
-                            basis: basis,
-                            dataDimensions: dataDimensions,
-                            valuesInfo: valuesInfo,
-                            attributes: attributes ? attributes : {},
-                            isNormalized: false
-                        };
-                    }
-                    Data.create = create;
-                    function normalize(densityData) {
-                        if (densityData.isNormalized)
-                            return;
-                        var data = densityData.data, _a = densityData.valuesInfo, mean = _a.mean, sigma = _a.sigma;
-                        var min = Number.POSITIVE_INFINITY, max = Number.NEGATIVE_INFINITY;
-                        for (var i = 0, _l = data.length; i < _l; i++) {
-                            var v = (data.getAt(i) - mean) / sigma;
-                            data.setAt(i, v);
-                            if (v < min)
-                                min = v;
-                            if (v > max)
-                                max = v;
-                        }
-                        densityData.valuesInfo.min = min;
-                        densityData.valuesInfo.max = max;
-                        densityData.isNormalized = true;
-                    }
-                    Data.normalize = normalize;
-                    function denormalize(densityData) {
-                        if (!densityData.isNormalized)
-                            return;
-                        var data = densityData.data, _a = densityData.valuesInfo, mean = _a.mean, sigma = _a.sigma;
-                        var min = Number.POSITIVE_INFINITY, max = Number.NEGATIVE_INFINITY;
-                        for (var i = 0, _l = data.length; i < _l; i++) {
-                            var v = sigma * data.getAt(i) + mean;
-                            data.setAt(i, v);
-                            if (v < min)
-                                min = v;
-                            if (v > max)
-                                max = v;
-                        }
-                        densityData.valuesInfo.min = min;
-                        densityData.valuesInfo.max = max;
-                        densityData.isNormalized = false;
-                    }
-                    Data.denormalize = denormalize;
-                })(Data = Density.Data || (Density.Data = {}));
+                function createSpacegroup(number, size, angles) {
+                    var alpha = (Math.PI / 180.0) * angles[0], beta = (Math.PI / 180.0) * angles[1], gamma = (Math.PI / 180.0) * angles[2];
+                    var xScale = size[0], yScale = size[1], zScale = size[2];
+                    var z1 = Math.cos(beta), z2 = (Math.cos(alpha) - Math.cos(beta) * Math.cos(gamma)) / Math.sin(gamma), z3 = Math.sqrt(1.0 - z1 * z1 - z2 * z2);
+                    var x = [xScale, 0.0, 0.0];
+                    var y = [Math.cos(gamma) * yScale, Math.sin(gamma) * yScale, 0.0];
+                    var z = [z1 * zScale, z2 * zScale, z3 * zScale];
+                    return {
+                        number: number,
+                        size: size,
+                        angles: angles,
+                        basis: { x: x, y: y, z: z }
+                    };
+                }
+                Density.createSpacegroup = createSpacegroup;
             })(Density = Formats.Density || (Formats.Density = {}));
         })(Formats = Core.Formats || (Core.Formats = {}));
     })(Core = LiteMol.Core || (LiteMol.Core = {}));
@@ -13908,13 +13861,14 @@ var LiteMol;
                          * Inspired by PyMOL implementation of the parser.
                          */
                         function parse(buffer) {
-                            var headerSize = 1024, endian = false, headerView = new DataView(buffer, 0, headerSize), warnings = [];
+                            var headerSize = 1024, headerView = new DataView(buffer, 0, headerSize), warnings = [];
+                            var endian = false;
                             var mode = headerView.getInt32(3 * 4, false);
                             if (mode !== 2) {
                                 endian = true;
                                 mode = headerView.getInt32(3 * 4, true);
                                 if (mode !== 2) {
-                                    return Formats.ParserResult.error("Only CCP4 modes 0 and 2 are supported.");
+                                    return Formats.ParserResult.error("Only CCP4 mode 2 is supported.");
                                 }
                             }
                             var readInt = function (o) { return headerView.getInt32(o * 4, endian); }, readFloat = function (o) { return headerView.getFloat32(o * 4, endian); };
@@ -13923,7 +13877,7 @@ var LiteMol;
                                 mode: mode,
                                 nxyzStart: getArray(readInt, 4, 3),
                                 grid: getArray(readInt, 7, 3),
-                                cellDimensions: getArray(readFloat, 10, 3),
+                                cellSize: getArray(readFloat, 10, 3),
                                 cellAngles: getArray(readFloat, 13, 3),
                                 crs2xyz: getArray(readInt, 16, 3),
                                 min: readFloat(19),
@@ -13954,8 +13908,8 @@ var LiteMol;
                                     return Formats.ParserResult.error("File is MUCH larger than expected and doesn't match header.");
                                 }
                             }
-                            //let mapp = readInt(52);
-                            //let mapStr = String.fromCharCode((mapp & 0xFF)) + String.fromCharCode(((mapp >> 8) & 0xFF)) + String.fromCharCode(((mapp >> 16) & 0xFF)) + String.fromCharCode(((mapp >> 24) & 0xFF));
+                            //const mapp = readInt(52);
+                            //const mapStr = String.fromCharCode((mapp & 0xFF)) + String.fromCharCode(((mapp >> 8) & 0xFF)) + String.fromCharCode(((mapp >> 16) & 0xFF)) + String.fromCharCode(((mapp >> 24) & 0xFF));
                             // pretend we've checked the MAP string at offset 52
                             // pretend we've read the symmetry data
                             if (header.grid[0] === 0 && header.extent[0] > 0) {
@@ -13974,29 +13928,21 @@ var LiteMol;
                                 warnings.push("All crs2xyz records are zero. Setting crs2xyz to 1, 2, 3.");
                                 header.crs2xyz = [1, 2, 3];
                             }
-                            if (header.cellDimensions[0] === 0.0 &&
-                                header.cellDimensions[1] === 0.0 &&
-                                header.cellDimensions[2] === 0.0) {
+                            if (header.cellSize[0] === 0.0 &&
+                                header.cellSize[1] === 0.0 &&
+                                header.cellSize[2] === 0.0) {
                                 warnings.push("Cell dimensions are all zero. Setting to 1.0, 1.0, 1.0. Map file will not align with other structures.");
-                                header.cellDimensions[0] = 1.0;
-                                header.cellDimensions[1] = 1.0;
-                                header.cellDimensions[2] = 1.0;
+                                header.cellSize[0] = 1.0;
+                                header.cellSize[1] = 1.0;
+                                header.cellSize[2] = 1.0;
                             }
-                            var alpha = (Math.PI / 180.0) * header.cellAngles[0], beta = (Math.PI / 180.0) * header.cellAngles[1], gamma = (Math.PI / 180.0) * header.cellAngles[2];
-                            var xScale = header.cellDimensions[0] / header.grid[0], yScale = header.cellDimensions[1] / header.grid[1], zScale = header.cellDimensions[2] / header.grid[2];
-                            var z1 = Math.cos(beta), z2 = (Math.cos(alpha) - Math.cos(beta) * Math.cos(gamma)) / Math.sin(gamma), z3 = Math.sqrt(1.0 - z1 * z1 - z2 * z2);
-                            var xAxis = [xScale, 0.0, 0.0], yAxis = [Math.cos(gamma) * yScale, Math.sin(gamma) * yScale, 0.0], zAxis = [z1 * zScale, z2 * zScale, z3 * zScale];
                             var indices = [0, 0, 0];
                             indices[header.crs2xyz[0] - 1] = 0;
                             indices[header.crs2xyz[1] - 1] = 1;
                             indices[header.crs2xyz[2] - 1] = 2;
-                            var origin;
+                            var originGrid;
                             if (header.origin2k[0] === 0.0 && header.origin2k[1] === 0.0 && header.origin2k[2] === 0.0) {
-                                origin = [
-                                    xAxis[0] * header.nxyzStart[indices[0]] + yAxis[0] * header.nxyzStart[indices[1]] + zAxis[0] * header.nxyzStart[indices[2]],
-                                    yAxis[1] * header.nxyzStart[indices[1]] + zAxis[1] * header.nxyzStart[indices[2]],
-                                    zAxis[2] * header.nxyzStart[indices[2]]
-                                ];
+                                originGrid = [header.nxyzStart[indices[0]], header.nxyzStart[indices[1]], header.nxyzStart[indices[2]]];
                             }
                             else {
                                 // Use ORIGIN records rather than old n[xyz]start records
@@ -14004,32 +13950,29 @@ var LiteMol;
                                 // XXX the ORIGIN field is only used by the EM community, and
                                 //     has undefined meaning for non-orthogonal maps and/or
                                 //     non-cubic voxels, etc.
-                                origin = [header.origin2k[indices[0]], header.origin2k[indices[1]], header.origin2k[indices[2]]];
+                                originGrid = [header.origin2k[indices[0]], header.origin2k[indices[1]], header.origin2k[indices[2]]];
                             }
                             var extent = [header.extent[indices[0]], header.extent[indices[1]], header.extent[indices[2]]];
-                            var skewMatrix = new Float32Array(16), i, j;
-                            for (i = 0; i < 3; i++) {
-                                for (j = 0; j < 3; j++) {
-                                    skewMatrix[4 * j + i] = header.skewMatrix[3 * i + j];
-                                }
-                                skewMatrix[12 + i] = header.skewTranslation[i];
-                            }
                             var nativeEndian = new Uint16Array(new Uint8Array([0x12, 0x34]).buffer)[0] === 0x3412;
                             var rawData = endian === nativeEndian
                                 ? readRawData1(new Float32Array(buffer, headerSize + header.symBytes, extent[0] * extent[1] * extent[2]), endian, extent, header.extent, indices, header.mean)
                                 : readRawData(new DataView(buffer, headerSize + header.symBytes), endian, extent, header.extent, indices, header.mean);
                             var field = new Density.Field3DZYX(rawData.data, extent);
-                            var data = Density.Data.create(header.cellDimensions, header.cellAngles, origin, header.skewFlag !== 0, skewMatrix, field, extent, { x: xAxis, y: yAxis, z: zAxis }, 
-                            //[header.nxyzStart[indices[0]], header.nxyzStart[indices[1]], header.nxyzStart[indices[2]]],
-                            { min: header.min, max: header.max, mean: header.mean, sigma: rawData.sigma }, { spacegroupIndex: header.spacegroupNumber - 1 });
+                            var data = {
+                                spacegroup: Density.createSpacegroup(header.spacegroupNumber, header.cellSize, header.cellAngles),
+                                box: {
+                                    origin: [originGrid[0] / header.grid[0], originGrid[1] / header.grid[1], originGrid[2] / header.grid[2]],
+                                    dimensions: [extent[0] / header.grid[0], extent[1] / header.grid[1], extent[2] / header.grid[2]],
+                                    sampleCount: extent
+                                },
+                                data: field,
+                                valuesInfo: { min: header.min, max: header.max, mean: header.mean, sigma: rawData.sigma }
+                            };
                             return Formats.ParserResult.success(data, warnings);
                         }
                         Parser.parse = parse;
                         function readRawData1(view, endian, extent, headerExtent, indices, mean) {
                             var data = new Float32Array(extent[0] * extent[1] * extent[2]), coord = [0, 0, 0], mX, mY, mZ, cX, cY, cZ, xSize, xySize, offset = 0, v = 0.1, sigma = 0.0, t = 0.1, iX = indices[0], iY = indices[1], iZ = indices[2];
-                            //mX = extent[indices[0]];
-                            //mY = extent[indices[1]];  
-                            //mZ = extent[indices[2]];
                             mX = headerExtent[0];
                             mY = headerExtent[1];
                             mZ = headerExtent[2];
@@ -14104,12 +14047,66 @@ var LiteMol;
                 var CIF;
                 (function (CIF) {
                     function parse(block) {
-                        return Parser.parse(block);
+                        if (block.getCategory('_density_info'))
+                            return Parser.parseLegacy(block);
+                        else if (block.getCategory('_volume_data_3d_info'))
+                            return Parser.parse(block);
+                        return Formats.ParserResult.error('Invalid data format.');
                     }
                     CIF.parse = parse;
                     var Parser;
                     (function (Parser) {
                         function parse(block) {
+                            var info = block.getCategory('_volume_data_3d_info');
+                            if (!info)
+                                return Formats.ParserResult.error('_volume_data_3d_info category is missing.');
+                            if (!block.getCategory('_volume_data_3d'))
+                                return Formats.ParserResult.error('_volume_data_3d category is missing.');
+                            function getVector3(name) {
+                                var ret = [0, 0, 0];
+                                for (var i = 0; i < 3; i++) {
+                                    ret[i] = info.getColumn(name + "[" + i + "]").getFloat(0);
+                                }
+                                return ret;
+                            }
+                            function getNum(name) { return info.getColumn(name).getFloat(0); }
+                            var header = {
+                                name: info.getColumn('name').getString(0),
+                                axisOrder: getVector3('axis_order'),
+                                origin: getVector3('origin'),
+                                dimensions: getVector3('dimensions'),
+                                sampleCount: getVector3('sample_count'),
+                                spacegroupNumber: getNum('spacegroup_number') | 0,
+                                cellSize: getVector3('spacegroup_cell_size'),
+                                cellAngles: getVector3('spacegroup_cell_angles'),
+                                mean: getNum('mean_sampled'),
+                                sigma: getNum('sigma_sampled')
+                            };
+                            var indices = [0, 0, 0];
+                            indices[header.axisOrder[0]] = 0;
+                            indices[header.axisOrder[1]] = 1;
+                            indices[header.axisOrder[2]] = 2;
+                            function normalizeOrder(xs) {
+                                return [xs[indices[0]], xs[indices[1]], xs[indices[2]]];
+                            }
+                            var sampleCount = normalizeOrder(header.sampleCount);
+                            var rawData = readValues(block.getCategory('_volume_data_3d').getColumn('values'), sampleCount, header.sampleCount, indices);
+                            var field = new Density.Field3DZYX(rawData.data, sampleCount);
+                            var data = {
+                                name: header.name,
+                                spacegroup: Density.createSpacegroup(header.spacegroupNumber, header.cellSize, header.cellAngles),
+                                box: {
+                                    origin: normalizeOrder(header.origin),
+                                    dimensions: normalizeOrder(header.dimensions),
+                                    sampleCount: sampleCount
+                                },
+                                data: field,
+                                valuesInfo: { min: rawData.min, max: rawData.max, mean: header.mean, sigma: header.sigma }
+                            };
+                            return Formats.ParserResult.success(data);
+                        }
+                        Parser.parse = parse;
+                        function parseLegacy(block) {
                             var info = block.getCategory('_density_info');
                             if (!info)
                                 return Formats.ParserResult.error('_density_info category is missing.');
@@ -14135,49 +14132,50 @@ var LiteMol;
                                 sigma: getNum('sigma'),
                                 spacegroupNumber: getNum('spacegroup_number') | 0,
                             };
-                            var alpha = (Math.PI / 180.0) * header.cellAngles[0], beta = (Math.PI / 180.0) * header.cellAngles[1], gamma = (Math.PI / 180.0) * header.cellAngles[2];
-                            var xScale = header.cellSize[0] / header.grid[0], yScale = header.cellSize[1] / header.grid[1], zScale = header.cellSize[2] / header.grid[2];
-                            var z1 = Math.cos(beta), z2 = (Math.cos(alpha) - Math.cos(beta) * Math.cos(gamma)) / Math.sin(gamma), z3 = Math.sqrt(1.0 - z1 * z1 - z2 * z2);
-                            var xAxis = [xScale, 0.0, 0.0], yAxis = [Math.cos(gamma) * yScale, Math.sin(gamma) * yScale, 0.0], zAxis = [z1 * zScale, z2 * zScale, z3 * zScale];
                             var indices = [0, 0, 0];
                             indices[header.axisOrder[0]] = 0;
                             indices[header.axisOrder[1]] = 1;
                             indices[header.axisOrder[2]] = 2;
-                            var d = [header.origin[indices[0]], header.origin[indices[1]], header.origin[indices[2]]];
-                            var origin = [
-                                xAxis[0] * d[0] + yAxis[0] * d[1] + zAxis[0] * d[2],
-                                yAxis[1] * d[1] + zAxis[1] * d[2],
-                                zAxis[2] * d[2]
-                            ];
-                            var extent = [header.extent[indices[0]], header.extent[indices[1]], header.extent[indices[2]]];
-                            var rawData = readRawData1(block.getCategory('_density_data').getColumn('values'), extent, header.extent, indices, header.mean);
-                            var field = new Density.Field3DZYX(rawData.data, extent);
-                            var data = Density.Data.create(header.cellSize, header.cellAngles, origin, false, void 0, field, extent, { x: xAxis, y: yAxis, z: zAxis }, 
-                            //[header.axisOrder[indices[0]], header.axisOrder[indices[1]], header.axisOrder[indices[2]]],
-                            { min: rawData.min, max: rawData.max, mean: header.mean, sigma: header.sigma }, { spacegroupIndex: header.spacegroupNumber - 1, name: header.name });
+                            var originGrid = [header.origin[indices[0]], header.origin[indices[1]], header.origin[indices[2]]];
+                            var xyzSampleCount = [header.extent[indices[0]], header.extent[indices[1]], header.extent[indices[2]]];
+                            var rawData = readValues(block.getCategory('_density_data').getColumn('values'), xyzSampleCount, header.extent, indices);
+                            var field = new Density.Field3DZYX(rawData.data, xyzSampleCount);
+                            var data = {
+                                name: header.name,
+                                spacegroup: Density.createSpacegroup(header.spacegroupNumber, header.cellSize, header.cellAngles),
+                                box: {
+                                    origin: [originGrid[0] / header.grid[0], originGrid[1] / header.grid[1], originGrid[2] / header.grid[2]],
+                                    dimensions: [xyzSampleCount[0] / header.grid[0], xyzSampleCount[1] / header.grid[1], xyzSampleCount[2] / header.grid[2]],
+                                    sampleCount: xyzSampleCount
+                                },
+                                data: field,
+                                valuesInfo: { min: rawData.min, max: rawData.max, mean: header.mean, sigma: header.sigma }
+                            };
                             return Formats.ParserResult.success(data);
                         }
-                        Parser.parse = parse;
-                        function readRawData1(col, extent, headerExtent, indices, mean) {
-                            var data = new Float32Array(extent[0] * extent[1] * extent[2]), coord = [0, 0, 0], mX, mY, mZ, cX, cY, cZ, xSize, xySize, offset = 0, v = 0.1, min = Number.POSITIVE_INFINITY, max = Number.NEGATIVE_INFINITY, iX = indices[0], iY = indices[1], iZ = indices[2];
-                            mX = headerExtent[0];
-                            mY = headerExtent[1];
-                            mZ = headerExtent[2];
-                            xSize = extent[0];
-                            xySize = extent[0] * extent[1];
-                            for (cZ = 0; cZ < mZ; cZ++) {
+                        Parser.parseLegacy = parseLegacy;
+                        function readValues(col, xyzSampleCount, sampleCount, axisIndices) {
+                            var data = new Float32Array(xyzSampleCount[0] * xyzSampleCount[1] * xyzSampleCount[2]);
+                            var coord = [0, 0, 0];
+                            var iX = axisIndices[0], iY = axisIndices[1], iZ = axisIndices[2];
+                            var mX = sampleCount[0], mY = sampleCount[1], mZ = sampleCount[2];
+                            var xSize = xyzSampleCount[0];
+                            var xySize = xyzSampleCount[0] * xyzSampleCount[1];
+                            var offset = 0;
+                            var min = col.getFloat(0), max = min;
+                            for (var cZ = 0; cZ < mZ; cZ++) {
                                 coord[2] = cZ;
-                                for (cY = 0; cY < mY; cY++) {
+                                for (var cY = 0; cY < mY; cY++) {
                                     coord[1] = cY;
-                                    for (cX = 0; cX < mX; cX++) {
+                                    for (var cX = 0; cX < mX; cX++) {
                                         coord[0] = cX;
-                                        v = col.getFloat(offset);
+                                        var v = col.getFloat(offset);
+                                        offset += 1;
+                                        data[coord[iX] + coord[iY] * xSize + coord[iZ] * xySize] = v;
                                         if (v < min)
                                             min = v;
                                         else if (v > max)
                                             max = v;
-                                        data[coord[iX] + coord[iY] * xSize + coord[iZ] * xySize] = v;
-                                        offset += 1;
                                     }
                                 }
                             }
@@ -14185,229 +14183,6 @@ var LiteMol;
                         }
                     })(Parser || (Parser = {}));
                 })(CIF = Density.CIF || (Density.CIF = {}));
-            })(Density = Formats.Density || (Formats.Density = {}));
-        })(Formats = Core.Formats || (Core.Formats = {}));
-    })(Core = LiteMol.Core || (LiteMol.Core = {}));
-})(LiteMol || (LiteMol = {}));
-/*
- * Copyright (c) 2016 - now David Sehnal, licensed under Apache 2.0, See LICENSE file for more info.
- */
-var LiteMol;
-(function (LiteMol) {
-    var Core;
-    (function (Core) {
-        var Formats;
-        (function (Formats) {
-            var Density;
-            (function (Density) {
-                var DSN6;
-                (function (DSN6) {
-                    function parse(buffer) {
-                        return Parser.parse(buffer);
-                    }
-                    DSN6.parse = parse;
-                    function remove(arrOriginal, elementToRemove) {
-                        return arrOriginal.filter(function (el) { return el !== elementToRemove; });
-                    }
-                    /**
-                     * Parses DSN6 files.
-                     */
-                    var Parser;
-                    (function (Parser) {
-                        /**
-                         * Parse DNS6 file.
-                         */
-                        function parse(buffer) {
-                            var headerSize = 512, endian = false, 
-                            //headerView = new DataView(buffer, 0, headerSize),
-                            headerView = new Uint8Array(buffer, 0, headerSize), 
-                            //sheaderView = String.fromCharCode.apply(null, new Uint8Array(headerView)),
-                            sheaderView = String.fromCharCode.apply(null, headerView), n1 = sheaderView.search('origin'), n2 = sheaderView.search('extent'), n3 = sheaderView.search('grid'), n4 = sheaderView.search('cell'), n5 = sheaderView.search('prod'), n6 = sheaderView.search('plus'), n7 = sheaderView.search('sigma'), sn1 = sheaderView.substring(n1 + 'origin'.length, n2).replace(' ', '').split(' '), sn1xx = remove(sn1, ''), sn2 = sheaderView.substring(n2 + 'extent'.length, n3).split(' '), sn2xx = remove(sn2, ''), sn3 = sheaderView.substring(n3 + 'grid'.length, n4).split(' '), sn3xx = remove(sn3, ''), sn4 = sheaderView.substring(n4 + 'cell'.length, n5).split(' '), sn4xx = remove(sn4, ''), sn5 = sheaderView.substring(n5 + 'prod'.length, n6).split(' '), sn5xx = remove(sn5, ''), sn6 = sheaderView.substring(n6 + 'plus'.length, n7).split(' '), sn6xx = remove(sn6, ''), warnings = [];
-                            var mode = 0;
-                            var header = {
-                                extent: sn2xx.map(function (v) { return parseInt(v); }),
-                                mode: mode,
-                                nxyzStart: [0, 0, 0],
-                                grid: sn3xx.map(function (v) { return parseInt(v); }),
-                                cellDimensions: sn4xx.slice(0, 3).map(function (v) { return parseFloat(v); }),
-                                cellAngles: sn4xx.slice(3, 6).map(function (v) { return parseFloat(v); }),
-                                crs2xyz: [1, 2, 3],
-                                min: 0.0,
-                                max: 0.0,
-                                mean: 0.0,
-                                symBytes: 0,
-                                skewFlag: 0,
-                                skewMatrix: 0,
-                                skewTranslation: 0,
-                                origin2k: sn1xx.map(function (v) { return parseFloat(v); }),
-                                prod: sn5xx.map(function (v) { return parseFloat(v); })[0],
-                                plus: sn6xx.map(function (v) { return parseFloat(v); })[0]
-                            };
-                            var dataOffset = 512;
-                            if (dataOffset !== headerSize + header.symBytes) {
-                                if (dataOffset === headerSize) {
-                                    warnings.push("File contains bogus symmetry record.");
-                                }
-                                else if (dataOffset < headerSize) {
-                                    return Formats.ParserResult.error("File appears truncated and doesn't match header.");
-                                }
-                                else if ((dataOffset > headerSize) && (dataOffset < (1024 * 1024))) {
-                                    // Fix for loading SPIDER files which are larger than usual
-                                    // In this specific case, we must absolutely trust the symBytes record
-                                    dataOffset = headerSize + header.symBytes;
-                                    warnings.push("File is larger than expected and doesn't match header. Continuing file load, good luck!");
-                                }
-                                else {
-                                    return Formats.ParserResult.error("File is MUCH larger than expected and doesn't match header.");
-                                }
-                            }
-                            // pretend we've checked the MAP string at offset 52
-                            // pretend we've read the symmetry data
-                            if (header.grid[0] === 0 && header.extent[0] > 0) {
-                                header.grid[0] = header.extent[0] - 1;
-                                warnings.push("Fixed X interval count.");
-                            }
-                            if (header.grid[1] === 0 && header.extent[1] > 0) {
-                                header.grid[1] = header.extent[1] - 1;
-                                warnings.push("Fixed Y interval count.");
-                            }
-                            if (header.grid[2] === 0 && header.extent[2] > 0) {
-                                header.grid[2] = header.extent[2] - 1;
-                                warnings.push("Fixed Z interval count.");
-                            }
-                            if (header.crs2xyz[0] === 0 && header.crs2xyz[1] === 0 && header.crs2xyz[2] === 0) {
-                                warnings.push("All crs2xyz records are zero. Setting crs2xyz to 1, 2, 3.");
-                                header.crs2xyz = [1, 2, 3];
-                            }
-                            if (header.cellDimensions[0] === 0.0 &&
-                                header.cellDimensions[1] === 0.0 &&
-                                header.cellDimensions[2] === 0.0) {
-                                warnings.push("Cell dimensions are all zero. Setting to 1.0, 1.0, 1.0. Map file will not align with other structures.");
-                                header.cellDimensions[0] = 1.0;
-                                header.cellDimensions[1] = 1.0;
-                                header.cellDimensions[2] = 1.0;
-                            }
-                            var alpha = (Math.PI / 180.0) * header.cellAngles[0], beta = (Math.PI / 180.0) * header.cellAngles[1], gamma = (Math.PI / 180.0) * header.cellAngles[2];
-                            var xScale = header.cellDimensions[0] / header.grid[0], yScale = header.cellDimensions[1] / header.grid[1], zScale = header.cellDimensions[2] / header.grid[2];
-                            var z1 = Math.cos(beta), z2 = (Math.cos(alpha) - Math.cos(beta) * Math.cos(gamma)) / Math.sin(gamma), z3 = Math.sqrt(1.0 - z1 * z1 - z2 * z2);
-                            var xAxis = [xScale, 0.0, 0.0], yAxis = [Math.cos(gamma) * yScale, Math.sin(gamma) * yScale, 0.0], zAxis = [z1 * zScale, z2 * zScale, z3 * zScale];
-                            var indices = [0, 0, 0];
-                            indices[header.crs2xyz[0] - 1] = 0;
-                            indices[header.crs2xyz[1] - 1] = 1;
-                            indices[header.crs2xyz[2] - 1] = 2;
-                            var origin;
-                            if (header.origin2k[0] === 0.0 && header.origin2k[1] === 0.0 && header.origin2k[2] === 0.0) {
-                                origin = [
-                                    xAxis[0] * header.nxyzStart[indices[0]] + yAxis[0] * header.nxyzStart[indices[1]] + zAxis[0] * header.nxyzStart[indices[2]],
-                                    yAxis[1] * header.nxyzStart[indices[1]] + zAxis[1] * header.nxyzStart[indices[2]],
-                                    zAxis[2] * header.nxyzStart[indices[2]]
-                                ];
-                            }
-                            else {
-                                // Use ORIGIN records rather than old n[xyz]start records
-                                //   http://www2.mrc-lmb.cam.ac.uk/image2000.html
-                                // XXX the ORIGIN field is only used by the EM community, and
-                                //     has undefined meaning for non-orthogonal maps and/or
-                                //     non-cubic voxels, etc.
-                                origin = [header.origin2k[indices[0]], header.origin2k[indices[1]], header.origin2k[indices[2]]];
-                            }
-                            var extent = [header.extent[indices[0]], header.extent[indices[1]], header.extent[indices[2]]];
-                            var skewMatrix = new Float32Array(16), i, j;
-                            for (i = 0; i < 3; i++) {
-                                for (j = 0; j < 3; j++) {
-                                    skewMatrix[4 * j + i] = 0.0; //header.skewMatrix[3 * i + j];
-                                }
-                                skewMatrix[12 + i] = 0.0; //header.skewTranslation[i];
-                            }
-                            var nativeEndian = new Uint16Array(new Uint8Array([0x12, 0x34]).buffer)[0] === 0x3412;
-                            endian = nativeEndian;
-                            var rawData = readRawData(new Uint8Array(buffer, headerSize + header.symBytes), endian, extent, header.extent, indices, header.mean, header.prod, header.plus);
-                            var field = new Density.Field3DZYX(rawData.data, extent);
-                            var data = Density.Data.create(header.cellDimensions, header.cellAngles, origin, header.skewFlag !== 0, skewMatrix, field, extent, { x: xAxis, y: yAxis, z: zAxis }, 
-                            //[header.nxyzStart[indices[0]], header.nxyzStart[indices[1]], header.nxyzStart[indices[2]]],
-                            { min: rawData.minj, max: rawData.maxj, mean: rawData.meanj, sigma: rawData.sigma }, { prod: header.prod, plus: header.plus }); //! added attributes property to store additional information
-                            return Formats.ParserResult.success(data, warnings);
-                        }
-                        Parser.parse = parse;
-                        //////////////////////////////////////////////////////////////////////////////////////////
-                        function readRawData(bytes, endian, extent, headerExtent, indices, mean, prod, plus) {
-                            //! DataView is generally a LOT slower than Uint8Array. For performance reasons I think it would be better to use that.
-                            //! Endian has no effect on individual bytes anyway to my knowledge.
-                            var mX, mY, mZ, cX, cY, cZ, xSize, xySize, offset = 0, v = 0.1, sigma = 0.0, t = 0.1, mi, mj, mk, x, y, z, minj = 0, maxj = 0, meanj = 0, block_size = 8, block_sizez = 8, block_sizey = 8, block_sizex = 8, bsize3 = block_size * block_size * block_size;
-                            //! I think this will need some fixing, because the values are non-integer
-                            //! A small perf trick: use 'value | 0' to tell the runtime the value is an integer.
-                            mX = headerExtent[0] / 8;
-                            mY = headerExtent[1] / 8;
-                            mZ = headerExtent[2] / 8;
-                            //In case of extra cubes
-                            /*
-                            if (headerExtent[0]%8>0) mX++;
-                            if (headerExtent[1]%8>0) mY++;
-                            if (headerExtent[2]%8>0) mZ++;
-                            xxtra=(headerExtent[0]%8);
-                            yxtra=(headerExtent[1]%8);
-                            zxtra=(headerExtent[2]%8);
-                            */
-                            var data = new Float32Array(8 * mX * 8 * mY * 8 * mZ);
-                            xSize = 8 * mX;
-                            xySize = 8 * 8 * mX * mY; //extent[0] * extent[1];
-                            minj = 0.0;
-                            maxj = 0.0;
-                            meanj = 0.0;
-                            //////////////////////////////////////////////////////////////
-                            for (mi = 0; mi < (bsize3 * mX * mY * mZ); mi++) {
-                                v = (bytes[mi] - plus) / prod;
-                                meanj += v;
-                                if (v < minj)
-                                    minj = v;
-                                if (v > maxj)
-                                    maxj = v;
-                            }
-                            //meanj/=(mX*mY*mZ*bsize3);
-                            meanj /= (bsize3 * mX * mY * mZ);
-                            for (cZ = 0; cZ < mZ; cZ++) {
-                                for (cY = 0; cY < mY; cY++) {
-                                    for (cX = 0; cX < mX; cX++) {
-                                        //! cX is suppoed to change the fastest because of the memory layout of the 1D array 
-                                        //if(xxtra>0 && mZ-cZ<=1.0) block_sizez=zxtra;
-                                        //if(xxtra>0 && mY-cY<=1.0) block_sizey=yxtra;
-                                        //if(xxtra>0 && mX-cX<=1.0) block_sizex=xxtra;
-                                        //! changed the ordering mi == X coord, was Z; mk == Z coord, was X
-                                        for (mk = 0; mk < block_sizez; mk++) {
-                                            for (mj = 0; mj < block_sizey; mj++) {
-                                                for (mi = 0; mi < block_sizex; mi++) {
-                                                    v = (bytes[offset + mi + 8 * mj + 8 * 8 * mk] - plus) / prod;
-                                                    //offset+=1;
-                                                    x = (block_sizex * cX + mi);
-                                                    y = (block_sizey * cY + mj);
-                                                    z = (block_sizez * cZ + mk);
-                                                    //! swapped x and z here.
-                                                    data[x + xSize * y + xySize * z] = v;
-                                                    t = v - meanj;
-                                                    sigma += t * t;
-                                                }
-                                            }
-                                        }
-                                        offset += bsize3;
-                                    }
-                                }
-                            }
-                            sigma /= (bsize3 * mX * mY * mZ);
-                            sigma = Math.sqrt(sigma);
-                            //  console.log(sigma);
-                            //  console.log(minj);
-                            //  console.log(maxj);
-                            //  console.log(meanj);
-                            return {
-                                data: data,
-                                sigma: sigma,
-                                minj: minj,
-                                maxj: maxj,
-                                meanj: meanj
-                            };
-                        }
-                    })(Parser || (Parser = {}));
-                })(DSN6 = Density.DSN6 || (Density.DSN6 = {}));
             })(Density = Formats.Density || (Formats.Density = {}));
         })(Formats = Core.Formats || (Core.Formats = {}));
     })(Core = LiteMol.Core || (LiteMol.Core = {}));
@@ -14439,8 +14214,7 @@ var LiteMol;
                 var SupportedFormats;
                 (function (SupportedFormats) {
                     SupportedFormats.CCP4 = { name: 'CCP4', shortcuts: ['ccp4', 'map'], extensions: ['.ccp4', '.map'], isBinary: true, parse: function (data) { return parse(data, 'CCP4', function (d) { return Density.CCP4.parse(d); }); } };
-                    SupportedFormats.DSN6 = { name: 'DSN6', shortcuts: ['dsn6'], extensions: ['.dsn6'], isBinary: true, parse: function (data) { return parse(data, 'DSN6', function (d) { return Density.DSN6.parse(d); }); } };
-                    SupportedFormats.All = [SupportedFormats.CCP4, SupportedFormats.DSN6];
+                    SupportedFormats.All = [SupportedFormats.CCP4];
                 })(SupportedFormats = Density.SupportedFormats || (Density.SupportedFormats = {}));
             })(Density = Formats.Density || (Formats.Density = {}));
         })(Formats = Core.Formats || (Core.Formats = {}));
@@ -15073,8 +14847,8 @@ var LiteMol;
                 function computeNormalsImmediate(surface) {
                     if (surface.normals)
                         return;
-                    var normals = new Float32Array(surface.vertices.length), v = surface.vertices, triangles = surface.triangleIndices, f, i;
-                    for (i = 0; i < triangles.length; i += 3) {
+                    var normals = new Float32Array(surface.vertices.length), v = surface.vertices, triangles = surface.triangleIndices;
+                    for (var i = 0; i < triangles.length; i += 3) {
                         var a = 3 * triangles[i], b = 3 * triangles[i + 1], c = 3 * triangles[i + 2];
                         var nx = v[a + 2] * (v[b + 1] - v[c + 1]) + v[b + 2] * v[c + 1] - v[b + 1] * v[c + 2] + v[a + 1] * (-v[b + 2] + v[c + 2]), ny = -(v[b + 2] * v[c]) + v[a + 2] * (-v[b] + v[c]) + v[a] * (v[b + 2] - v[c + 2]) + v[b] * v[c + 2], nz = v[a + 1] * (v[b] - v[c]) + v[b + 1] * v[c] - v[b] * v[c + 1] + v[a] * (-v[b + 1] + v[b + 1]);
                         normals[a] += nx;
@@ -15087,11 +14861,11 @@ var LiteMol;
                         normals[c + 1] += ny;
                         normals[c + 2] += nz;
                     }
-                    for (i = 0; i < normals.length; i += 3) {
+                    for (var i = 0; i < normals.length; i += 3) {
                         var nx = normals[i];
                         var ny = normals[i + 1];
                         var nz = normals[i + 2];
-                        f = 1.0 / Math.sqrt(nx * nx + ny * ny + nz * nz);
+                        var f = 1.0 / Math.sqrt(nx * nx + ny * ny + nz * nz);
                         normals[i] *= f;
                         normals[i + 1] *= f;
                         normals[i + 2] *= f;
@@ -15428,14 +15202,15 @@ var LiteMol;
                         this.verticesOnEdges = new Int32Array(3 * this.nX * this.nY * 2);
                     }
                     MarchingCubesState.prototype.get3dOffsetFromEdgeInfo = function (index) {
-                        return (this.nX * (((this.k + index.k) % 2) * this.nY + this.j + index.j) + this.i + index.i) | 0;
+                        return (this.nX * (((this.k + index.k) % 2) * this.nY + this.j + index.j) + this.i + index.i);
                     };
                     /**
                      * This clears the "vertex index buffer" for the slice that will not be accessed anymore.
                      */
                     MarchingCubesState.prototype.clearEdgeVertexIndexSlice = function (k) {
-                        var start = 3 * (this.nX * ((k % 2) * this.nY)) | 0;
-                        var end = 3 * (this.nX * ((k % 2) * this.nY + this.nY - 1) + this.nX - 1) | 0;
+                        // clear either the top or bottom half of the buffer...
+                        var start = k % 2 === 0 ? 0 : 3 * this.nX * this.nY;
+                        var end = k % 2 === 0 ? 3 * this.nX * this.nY : this.verticesOnEdges.length;
                         for (var i = start; i < end; i++)
                             this.verticesOnEdges[i] = 0;
                     };
@@ -15445,11 +15220,18 @@ var LiteMol;
                         if (ret > 0)
                             return (ret - 1) | 0;
                         var edge = MarchingCubes.CubeEdges[edgeNum];
-                        var a = edge.a, b = edge.b, li = a.i + this.i, lj = a.j + this.j, lk = a.k + this.k, hi = b.i + this.i, hj = b.j + this.j, hk = b.k + this.k, v0 = this.scalarField.get(li, lj, lk), v1 = this.scalarField.get(hi, hj, hk), t = (this.isoLevel - v0) / (v0 - v1);
+                        var a = edge.a, b = edge.b;
+                        var li = a.i + this.i, lj = a.j + this.j, lk = a.k + this.k;
+                        var hi = b.i + this.i, hj = b.j + this.j, hk = b.k + this.k;
+                        var v0 = this.scalarField.get(li, lj, lk), v1 = this.scalarField.get(hi, hj, hk);
+                        var t = (this.isoLevel - v0) / (v0 - v1);
                         var id = Core.Utils.ChunkedArray.add3(this.vertexBuffer, li + t * (li - hi), lj + t * (lj - hj), lk + t * (lk - hk)) | 0;
                         this.verticesOnEdges[edgeId] = id + 1;
                         if (this.annotate) {
-                            Core.Utils.ChunkedArray.add(this.annotationBuffer, this.annotationField.get(this.i, this.j, this.k));
+                            var a_1 = t < 0.5 ? this.annotationField.get(li, lj, lk) : this.annotationField.get(hi, hj, hk);
+                            if (a_1 < 0)
+                                a_1 = t < 0.5 ? this.annotationField.get(hi, hj, hk) : this.annotationField.get(li, lj, lk);
+                            Core.Utils.ChunkedArray.add(this.annotationBuffer, a_1);
                         }
                         return id;
                     };
@@ -16080,14 +15862,10 @@ var LiteMol;
                                 for (var i = mini; i < maxi; i++) {
                                     var tX = cx + i * this.dX, xx = yy + tX * tX, offset = oY + i;
                                     var v = strSq / (0.000001 + xx) - 1;
-                                    //let offset = nX * (k * nY + j) + i;
                                     if (xx < this.distanceField[offset]) {
                                         this.proximityMap[offset] = aI;
                                         this.distanceField[offset] = xx;
                                     }
-                                    //if (xx >= maxRsq) continue;
-                                    //let v = strength / Math.sqrt(0.000001 + zz) - 1;
-                                    //v = Math.Exp(-((Dist/AtomRadius)*(Dist/AtomRadius)));
                                     if (v > 0) {
                                         this.field[offset] += v;
                                     }

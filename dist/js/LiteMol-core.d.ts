@@ -1916,6 +1916,9 @@ declare namespace LiteMol.Core.Formats.Density {
         set(i: number, j: number, k: number, v: number): void;
         fill(v: number): void;
     }
+    /**
+     * A field with the Z axis being the slowest and the X being the fastest.
+     */
     class Field3DZYX implements Field3D {
         data: number[];
         dimensions: number[];
@@ -1930,46 +1933,34 @@ declare namespace LiteMol.Core.Formats.Density {
         fill(v: number): void;
         constructor(data: number[], dimensions: number[]);
     }
-    /**
-     * Represents electron density data.
-     */
-    interface Data {
-        /**
-         * Crystal cell size.
-         */
-        cellSize: number[];
-        /**
-         * Crystal cell angles.
-         */
-        cellAngles: number[];
-        /**
-         * Origin of the cell
-         */
-        origin: number[];
-        /**
-         * 3D volumetric data.
-         */
-        data: Field3D;
-        /**
-         * X, Y, Z dimensions of the data matrix.
-         */
-        dataDimensions: number[];
-        /**
-         * The basis of the space.
-         */
+    interface Spacegroup {
+        number: number;
+        size: number[];
+        angles: number[];
         basis: {
             x: number[];
             y: number[];
             z: number[];
         };
+    }
+    /**
+     * Represents electron density data.
+     */
+    interface Data {
+        name?: string;
+        spacegroup: Spacegroup;
+        box: {
+            /** Origin of the data block in fractional coords. */
+            origin: number[];
+            /** Dimensions oft he data block in fractional coords. */
+            dimensions: number[];
+            /** X, Y, Z dimensions of the data matrix. */
+            sampleCount: number[];
+        };
         /**
-         * Was the skew matrix present in the input?
+         * 3D volumetric data.
          */
-        hasSkewMatrix: boolean;
-        /**
-         * Column major ordered skew matrix.
-         */
-        skewMatrix: number[];
+        data: Field3D;
         /**
          * Information about the min/max/mean/sigma values.
          */
@@ -1979,33 +1970,8 @@ declare namespace LiteMol.Core.Formats.Density {
             mean: number;
             sigma: number;
         };
-        /**
-         * Additional attributes.
-         */
-        attributes: {
-            [key: string]: any;
-        };
-        /**
-         * Are the data normalized?
-         */
-        isNormalized: boolean;
     }
-    namespace Data {
-        function create(cellSize: number[], cellAngles: number[], origin: number[], hasSkewMatrix: boolean, skewMatrix: number[], data: Field3D, dataDimensions: number[], basis: {
-            x: number[];
-            y: number[];
-            z: number[];
-        }, valuesInfo: {
-            min: number;
-            max: number;
-            mean: number;
-            sigma: number;
-        }, attributes?: {
-            [key: string]: any;
-        }): Data;
-        function normalize(densityData: Data): void;
-        function denormalize(densityData: Data): void;
-    }
+    function createSpacegroup(number: number, size: number[], angles: number[]): Spacegroup;
 }
 declare namespace LiteMol.Core.Formats.Density.CCP4 {
     function parse(buffer: ArrayBuffer): ParserResult<Data>;
@@ -2013,13 +1979,9 @@ declare namespace LiteMol.Core.Formats.Density.CCP4 {
 declare namespace LiteMol.Core.Formats.Density.CIF {
     function parse(block: Formats.CIF.DataBlock): ParserResult<Data>;
 }
-declare namespace LiteMol.Core.Formats.Density.DSN6 {
-    function parse(buffer: ArrayBuffer): ParserResult<Data>;
-}
 declare namespace LiteMol.Core.Formats.Density {
     namespace SupportedFormats {
         const CCP4: FormatInfo;
-        const DSN6: FormatInfo;
         const All: FormatInfo[];
     }
 }

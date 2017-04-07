@@ -1,4 +1,13 @@
-﻿# 3.0.4
+﻿# 3.1.1
+* More robust nucleotide detection.
+
+# 3.1.0
+* Updated density data model.
+* Removed the support for the DSN6 density data format.
+* Fixed a bug in marching cubes that sometimes added bad triangles because of a vertex index cache not being properly cleaned.
+* Marching cubes annotation tweak.
+
+# 3.0.4
 * Fix in PDB CRYST1 record parsing.
 
 # 3.0.3

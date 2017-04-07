@@ -8,8 +8,7 @@ namespace LiteMol.Bootstrap.Entity.Transformer.Density {
 
     export interface ParseDataParams {
         id?: string,
-        format: LiteMol.Core.Formats.FormatInfo,
-        normalize: boolean
+        format: LiteMol.Core.Formats.FormatInfo
     }
     export const ParseData = Tree.Transformer.create<Entity.Data.String | Entity.Data.Binary, Entity.Density.Data, ParseDataParams>({
         id: 'density-parse-binary',
@@ -25,21 +24,8 @@ namespace LiteMol.Bootstrap.Entity.Transformer.Density {
             if (data.isError) {
                 throw data.toString();
             }
-            if (t.params.normalize) {
-                data.result.normalize();
-            }
-            let e = Entity.Density.Data.create(t, { label: t.params.id ? t.params.id : 'Density Data', data: data.result, description: t.params.normalize ? 'Normalized' : '' });
+            let e = Entity.Density.Data.create(t, { label: t.params.id ? t.params.id : 'Density Data', data: data.result });
             return e;
-        });
-    }, (ctx, b, t) => {
-        if (b.props.data.isNormalized === t.params.normalize) return Task.resolve('Density', 'Background', Tree.Node.Null);
-
-        return Task.create<Entity.Density.Data>('Update Density', 'Normal', async ctx => {
-            await ctx.updateProgress('Updating...');
-            let data = b.props.data;
-            if (data.isNormalized) Core.Formats.Density.Data.denormalize(data);
-            else Core.Formats.Density.Data.normalize(data);
-            return Entity.Density.Data.create(t, { label: t.params.id ? t.params.id : 'Density Data', data, description: t.params.normalize ? 'Normalized' : '' });
         });
     });
 
@@ -63,7 +49,7 @@ namespace LiteMol.Bootstrap.Entity.Transformer.Density {
             if (data.isError) {
                 throw data.toString();
             }
-            return Entity.Density.Data.create(t, { label: t.params.id ? t.params.id : 'Density Data', data: data.result, description: data.result.attributes['name'] });        
+            return Entity.Density.Data.create(t, { label: t.params.id ? t.params.id : 'Density Data', data: data.result, description: data.result.name });        
         }).setReportTime(true);
     });
 
@@ -81,7 +67,7 @@ namespace LiteMol.Bootstrap.Entity.Transformer.Density {
         isUpdatable: false,
         defaultParams: () => (<any>{ })
     }, (ctx, a, t) => {
-        let e = Entity.Density.Data.create(t, { label: t.params.id ? t.params.id : 'Density Data', data: t.params.data, description: t.params.data.attributes['name'] });
+        let e = Entity.Density.Data.create(t, { label: t.params.id ? t.params.id : 'Density Data', data: t.params.data, description: t.params.data.name });
         return Task.resolve<Entity.Density.Data>('Create Density', 'Background', e);
     });
 
@@ -103,19 +89,21 @@ namespace LiteMol.Bootstrap.Entity.Transformer.Density {
         let params = t.params;
         return Visualization.Density.create(a, t, params.style!).setReportTime(Visualization.Style.getTaskType(t.params.style) === 'Normal');
     }, (ctx, b, t) => {
+        const oldStyle = (b.transform.params as CreateVisualParams).style;
+        const newStyle = t.params.style;
 
-        let oldParams = b.transform.params as CreateVisualParams;
-        if (oldParams.style!.type !== t.params.style!.type || !Utils.deepEqual(oldParams.style!.params, t.params.style!.params)) return void 0;
+        if (oldStyle.type !== t.params.style.type) return void 0;
 
-        let parent = Tree.Node.findClosestNodeOfType(b, [Entity.Density.Data]);
+        const parent = Tree.Node.findClosestNodeOfType(b, [Entity.Density.Data]) as Entity.Density.Data;
         if (!parent) return void 0;
-
-        let model = b.props.model;
+        const model = b.props.model;
         if (!model) return void 0;
 
-        if (!Utils.deepEqual(oldParams.style!.theme, t.params.style!.theme)) {
-            let ti = t.params.style!.theme!;
-            let theme = ti.template!.provider(parent, Visualization.Theme.getProps(ti));
+        if (!compareVisualParams(parent.props.data, oldStyle.params, newStyle.params)) return void 0;
+
+        if (!Utils.deepEqual(oldStyle.theme, t.params.style!.theme)) {
+            const ti = newStyle.theme;
+            const theme = ti.template!.provider(parent, Visualization.Theme.getProps(ti));
             model.applyTheme(theme);
             b.props.style.theme = ti;
             Entity.nodeUpdated(b);
@@ -153,25 +141,37 @@ namespace LiteMol.Bootstrap.Entity.Transformer.Density {
         let isSigma = params.style!.params!.isoValueType === void 0 || params.style!.params!.isoValueType === Visualization.Density.IsoValueType.Sigma;
         return Task.resolve('Behaviour', 'Background', Entity.Density.InteractiveSurface.create(t, { label: `${params.id ? t.params.id : 'Interactive'}, ${Utils.round(params.style!.params!.isoValue!, 2)}${isSigma ? ' \u03C3' : ''}`, behaviour: b }));
     }, (ctx, b, t) => {
-        let oldParams = b.transform.params as CreateVisualBehaviourParams;
-        let params = t.params;
-        if (oldParams.style!.type !== params.style!.type || !Utils.deepEqual(oldParams.style!.params, params.style!.params)) return void 0;
+        const oldParams = b.transform.params as CreateVisualBehaviourParams;
+        const newParams = t.params;
+        if (oldParams.style.type !== newParams.style.type) return void 0;
 
-        if (oldParams.isoSigmaMin !== params.isoSigmaMin
-            || oldParams.isoSigmaMax !== params.isoSigmaMax
-            || oldParams.minRadius !== params.minRadius
-            || oldParams.maxRadius !== params.maxRadius
-            || oldParams.radius !== params.radius
-            || oldParams.showFull !== params.showFull) {
+        if (oldParams.isoSigmaMin !== newParams.isoSigmaMin
+            || oldParams.isoSigmaMax !== newParams.isoSigmaMax
+            || oldParams.minRadius !== newParams.minRadius
+            || oldParams.maxRadius !== newParams.maxRadius
+            || oldParams.radius !== newParams.radius
+            || oldParams.showFull !== newParams.showFull) {
             return void 0; 
         }
         
-        let parent = Tree.Node.findClosestNodeOfType(b, [Entity.Density.Data]);
+        let parent = Tree.Node.findClosestNodeOfType(b, [Entity.Density.Data]) as Entity.Density.Data;
         if (!parent) return void 0;
 
-        let ti = params.style.theme;
+        if (!compareVisualParams(parent.props.data, oldParams.style.params, newParams.style.params)) return void 0;
+
+        let ti = newParams.style.theme;
         b.props.behaviour.updateTheme(ti);
         Entity.nodeUpdated(b);
         return Task.resolve(t.transformer.info.name, 'Background', Tree.Node.Null);
     });
+
+    function compareVisualParams(data: Core.Formats.Density.Data, a: Visualization.Density.Params, b: Visualization.Density.Params) {
+        if (!Visualization.Density.areNonIsoParamsSame(a, b)) return false;
+        const { valuesInfo } = data;
+        const oldIso = a.isoValueType === Visualization.Density.IsoValueType.Absolute
+            ? a.isoValue : valuesInfo.mean + valuesInfo.sigma * a.isoValue;
+        const newIso = b.isoValueType === Visualization.Density.IsoValueType.Absolute
+            ? b.isoValue : valuesInfo.mean + valuesInfo.sigma * b.isoValue;
+        return Math.abs(oldIso - newIso) < 1e-6;
+    }
 }
