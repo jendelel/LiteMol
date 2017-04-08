@@ -7,18 +7,32 @@ namespace LiteMol.PrankWeb.DataLoader {
         model: Bootstrap.Entity.Molecule.Model;
         prediction: Prediction;
         sequence: SequenceEntity;
-        atomColorMapping: Uint8Array;
     }
 
-    function getColorMapping(model: Bootstrap.Entity.Molecule.Model, prediction: Prediction, sequence: SequenceEntity) {
+    function initColorMapping(model: Bootstrap.Entity.Molecule.Model, prediction: Prediction, sequence: SequenceEntity) {
+        const atomColorMapConservation = new Uint8Array(model.props.model.data.atoms.count);
         const atomColorMap = new Uint8Array(model.props.model.data.atoms.count);
+        let seq = sequence.props.seq
+        let seqIndices = seq.indices;
+        let seqScores = seq.scores;
+        if (seqScores != null) {
+            seqIndices.forEach((seqIndex, i) => {
+                let shade = Math.round((seqScores[i]) * 10); // Shade within [0,10]
+                let query = Query.residuesById(seqIndex).compile()
+                for (const atom of query(model.props.model.queryContext).unionAtomIndices()) {
+                    atomColorMap[atom] = shade + Colors.size + 1; // First there is fallbackColor(0), then pocketColors(1-9) and lastly conservation colors.
+                    atomColorMapConservation[atom] = shade + Colors.size + 1; // First there is fallbackColor(0), then pocketColors(1-9) and lastly conservation colors.
+                }
+            });
+        }
+
         let pockets = prediction.props.pockets;
         pockets.forEach((pocket, i) => {
             for (const atom of pocket.surfAtomIds) {
                 atomColorMap[atom - 1] = (i % 8) + 1; // Index of color that we want for the particular atom. i.e. Colors.get(i%8)
             }
         });
-        return atomColorMap;
+        return { atomColorMap, atomColorMapConservation };
     }
 
     export function loadData(plugin: Plugin.Controller, inputType: string, inputId: string) {
@@ -55,13 +69,15 @@ namespace LiteMol.PrankWeb.DataLoader {
                     let model = plugin.context.select('model')[0] as Bootstrap.Entity.Molecule.Model;
                     let prediction = plugin.context.select('pockets')[0] as Prediction;
                     let sequence = plugin.context.select('sequence')[0] as SequenceEntity;
-                    let atomColorMapping = getColorMapping(model, prediction, sequence);
+                    let mappings = initColorMapping(model, prediction, sequence);
+                    DataLoader.setAtomColorMapping(plugin, model, mappings.atomColorMap);
+                    DataLoader.setAtomColorMapping(plugin, model, mappings.atomColorMapConservation, true);
                     if (!prediction)
                         rej("Unable to load predictions.");
                     else if (!sequence)
                         rej("Unable to load protein sequence.");
                     else {
-                        res({ model, prediction, sequence, atomColorMapping });
+                        res({ model, prediction, sequence });
                     }
                 }).catch(function (e) { return rej(e); });
         });
@@ -128,19 +144,44 @@ namespace LiteMol.PrankWeb.DataLoader {
         });
     }
 
-    export function colorProteinFuture(plugin:Plugin.Controller, data:PrankData) {
-        return new LiteMol.Promise<PrankData>((res, rej) => {
-            colorProtein(plugin, data.atomColorMapping);
-            res(data);
-        });        
+    export function setAtomColorMapping(plugin: Plugin.Controller, model: Bootstrap.Entity.Molecule.Model, mapping: Uint8Array, conservation: boolean = false) {
+        let ctx = plugin.context
+        let cache = ctx.entityCache;
+        let cacheId = conservation ? '__PrankWeb__atomColorMapping__conservation__' : '__PrankWeb__atomColorMapping__'
+        cache.set(model, cacheId, mapping)
     }
 
-    export function colorProtein(plugin: Plugin.Controller, atomColorMapping: Uint8Array) {
+    export function getAtomColorMapping(plugin: Plugin.Controller, model: Bootstrap.Entity.Molecule.Model, conservation: boolean = false) {
+        let ctx = plugin.context
+        let cache = ctx.entityCache;
+        let cacheId = conservation ? '__PrankWeb__atomColorMapping__conservation__' : '__PrankWeb__atomColorMapping__'
+        return cache.get<Uint8Array>(model, cacheId);
+    }
+
+    export function colorProteinFuture(plugin: Plugin.Controller, data: PrankData) {
+        return new LiteMol.Promise<PrankData>((res, rej) => {
+            if (colorProtein(plugin)) {
+                res(data);
+            } else {
+                rej("Mapping or model not found!");
+            }
+        });
+    }
+
+    export function colorProtein(plugin: Plugin.Controller) {
+        let model = plugin.context.select('model')[0] as Bootstrap.Entity.Molecule.Model;
+        if (!model) return false;
+        let atomColorMapping = getAtomColorMapping(plugin, model);
+        if (!atomColorMapping) return false;
         let colorMap = LiteMol.Core.Utils.FastMap.create<number, Visualization.Color>();
         const fallbackColor = Visualization.Color.fromHex(0xffffff); // white
         colorMap.set(0, fallbackColor);
         // Fill the color map with colors.
         Colors.forEach((color, i) => colorMap.set(i! + 1, color!));
+        for (const shade of [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]) {
+            let c = shade * 255;
+            colorMap.set(colorMap.size, Visualization.Color.fromRgb(c, c, c));
+        }
 
         const colors = Core.Utils.FastMap.create<string, LiteMol.Visualization.Color>();
         colors.set('Uniform', fallbackColor)
@@ -148,14 +189,15 @@ namespace LiteMol.PrankWeb.DataLoader {
         colors.set('Highlight', Visualization.Theme.Default.HighlightColor)
 
         // Create mapping, theme and apply to all protein visuals.
-        const mapping = Visualization.Theme.createColorMapMapping(i => atomColorMapping[i], colorMap, fallbackColor);
+        const mapping = Visualization.Theme.createColorMapMapping(i => atomColorMapping![i], colorMap, fallbackColor);
         // make the theme "sticky" so that it persist "ResetScene" command.
-        const themeTransparent = Visualization.Theme.createMapping(mapping, { colors, isSticky: true, transparency: { alpha: 0.5 } });
-        const theme = Visualization.Theme.createMapping(mapping, { colors, isSticky: true });
+        const themeTransparent = Visualization.Theme.createMapping(mapping, { colors, isSticky: true, transparency: { alpha: 1 } });
+        //const theme = Visualization.Theme.createMapping(mapping, { colors, isSticky: true });
 
         const surface = plugin.selectEntities(Bootstrap.Tree.Selection.byRef('polymer-surface').subtree().ofType(Bootstrap.Entity.Molecule.Visual))[0];
-        const cartoon = plugin.selectEntities(Bootstrap.Tree.Selection.byRef('polymer-cartoon').subtree().ofType(Bootstrap.Entity.Molecule.Visual))[0];
+        //const cartoon = plugin.selectEntities(Bootstrap.Tree.Selection.byRef('polymer-cartoon').subtree().ofType(Bootstrap.Entity.Molecule.Visual))[0];
         plugin.command(Bootstrap.Command.Visual.UpdateBasicTheme, { visual: surface as any, theme: themeTransparent });
-        plugin.command(Bootstrap.Command.Visual.UpdateBasicTheme, { visual: cartoon as any, theme });
+        //plugin.command(Bootstrap.Command.Visual.UpdateBasicTheme, { visual: cartoon as any, theme });
+        return true;
     }
 }

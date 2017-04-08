@@ -15,6 +15,10 @@ namespace LiteMol.PrankWeb {
         selectionInfo: Bootstrap.Interactivity.Molecule.SelectionInfo
     }
 
+    export function tooglePocketVisibility(data: DataLoader.PrankData) {
+
+    }
+
     export class PocketList extends React.Component<{ plugin: Plugin.Controller, data: DataLoader.PrankData }, {}> {
 
         calcConservationAvg() {
@@ -24,7 +28,7 @@ namespace LiteMol.PrankWeb {
             let indexMap = LiteMol.Core.Utils.FastMap.create<number, number>();
             seq.indices.forEach((element, i) => { indexMap.set(element, i); });
             return pockets.map((pocket, i) => {
-                let scoreSum = pocket.residueIds.map((i) => seq.scores[indexMap.get(i) !]).reduce((acc, val) => acc + val, 0);
+                let scoreSum = pocket.residueIds.map((i) => seq.scores[indexMap.get(i)!]).reduce((acc, val) => acc + val, 0);
                 // Round the score to 3 digit average.
                 return (scoreSum / pocket.residueIds.length).toFixed(3);
             })
@@ -62,9 +66,28 @@ namespace LiteMol.PrankWeb {
                     let visible = (e.data.state.visibility === Bootstrap.Entity.Visibility.Full || e.data.state.visibility === Bootstrap.Entity.Visibility.Partial);
                     if (this.state.isVisible !== visible) {
                         this.setState({ isVisible: visible });
+                        this.toogleColoring(visible);
                     }
                 }
             });
+        }
+
+        private toogleColoring(isVisible: boolean) {
+            let mapping = DataLoader.getAtomColorMapping(this.props.plugin, this.props.model, false);
+            if (!mapping) return;
+            if (isVisible) {
+                for (const atom of this.props.pocket.surfAtomIds) {
+                    mapping[atom - 1] = (this.props.index % 8) + 1; // Index of color that we want for the particular atom. i.e. Colors.get(i%8)
+                }
+            } else {
+                let originalMapping = DataLoader.getAtomColorMapping(this.props.plugin, this.props.model, true);
+                if (!originalMapping) return;
+                for (const atom of this.props.pocket.surfAtomIds) {
+                    mapping[atom - 1] = originalMapping[atom - 1];
+                }
+            }
+            DataLoader.setAtomColorMapping(this.props.plugin, this.props.model, mapping, false);
+            DataLoader.colorProtein(this.props.plugin);
         }
 
         private getPocket() {
@@ -78,7 +101,7 @@ namespace LiteMol.PrankWeb {
                 let selectionQ = Core.Structure.Query.atomsById.apply(null, pocket.surfAtomIds)//Core.Structure.Query.chains({ authAsymId: 'A' })
                 let elements = Core.Structure.Query.apply(selectionQ, model.props.model).unionAtomIndices()
                 let selection = Bootstrap.Interactivity.Info.selection(model, elements)
-                let selectionInfo = Bootstrap.Interactivity.Molecule.transformInteraction(selection) !;
+                let selectionInfo = Bootstrap.Interactivity.Molecule.transformInteraction(selection)!;
                 item = new CacheItem(selectionQ, selectionInfo)
                 cache.set(model, cacheId, item)
             }
