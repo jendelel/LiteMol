@@ -89,13 +89,13 @@ namespace LiteMol.PrankWeb {
                         lastStart = resNum;
                     } else {
                         if (lastResNum + 1 < resNum) {
-                            features.push(new Feature("Pockets", `${pocket.name} col${i % 6}`, lastStart, lastResNum, pocket.rank.toString()))
+                            features.push(new Feature("Pockets", `${pocket.name} col${i % 8}`, lastStart, lastResNum, pocket.rank.toString()))
                             lastStart = resNum;
                         }
                     }
                     lastResNum = resNum;
                 })
-                features.push(new Feature("Pockets", `${pocket.name} col${i % 6}`, lastStart, lastResNum, pocket.rank.toString()))
+                features.push(new Feature("Pockets", `${pocket.name} col${i % 8}`, lastStart, lastResNum, pocket.rank.toString()))
             });
 
         }
@@ -122,7 +122,7 @@ namespace LiteMol.PrankWeb {
             new pviz.SeqEntryAnnotInteractiveView({
                 model: this.pVizSeqView, el: '#seqView',
                 xChangeCallback: (pStart: number, pEnd: number) => {
-                    this.onLetterMouseEnter(Math.round(pStart));
+                    this.onLetterMouseEnter(Math.round(pStart) + 1);
                 }
             }).render();
 

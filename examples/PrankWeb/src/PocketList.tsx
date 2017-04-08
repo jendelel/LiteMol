@@ -58,7 +58,6 @@ namespace LiteMol.PrankWeb {
                 let entityRef = e.data.ref; // Pocket name whose visibility just changed.
                 let pocket = this.props.pocket;
                 if (entityRef === pocket.name) {
-                    console.log(e.data)
                     // It should still be visible even if some children are invisible.
                     let visible = (e.data.state.visibility === Bootstrap.Entity.Visibility.Full || e.data.state.visibility === Bootstrap.Entity.Visibility.Partial);
                     if (this.state.isVisible !== visible) {
