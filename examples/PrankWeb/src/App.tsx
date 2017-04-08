@@ -19,12 +19,14 @@ namespace LiteMol.PrankWeb.App {
             this.setState({isLoading: true, error: void 0});
             // Load data.
             DataLoader.loadData(this.props.plugin, this.props.inputType,this.props.inputId)
-                // Visualize the data
-                .then((val: {plugin:Plugin.Controller, data:DataLoader.PrankData})=>DataLoader.visualizeData(val.plugin, val.data))
+                // Visualize the data.
+                .then((data)=>DataLoader.visualizeData(this.props.plugin, data))
+                // Color the protein surface and cartoon.
+                .then((data)=>DataLoader.colorProteinFuture(this.props.plugin, data))
                 // Everything went well, change the loading state.
                 .then((data)=> this.setState({isLoading:false, data}))
-                // Everything went wrong, change the loading state and set the error msg.
-                .catch((e)=> this.setState({isLoading:false, error:'' + e}));
+                // Something went wrong, change the loading state and set the error msg.
+                .catch((e)=> this.setState({isLoading:false, error:'' + e}));                
         }
         
         render() {
