@@ -5,7 +5,7 @@ namespace LiteMol.PrankWeb {
     import Views = Plugin.Views;
     import Bootstrap = LiteMol.Bootstrap;
     import React = LiteMol.Plugin.React; // this is to enable the HTML-like syntax
-    declare var getPviz: any;
+    declare var createProtael: any;
 
     class CacheItem {
         constructor(query: Query.Builder, selectionInfo: Bootstrap.Interactivity.Molecule.SelectionInfo) {
@@ -17,30 +17,48 @@ namespace LiteMol.PrankWeb {
     }
 
     class Feature {
-        constructor(cat: string, typ: string, start: number, end: number, text: string) {
-            this.category = cat;
-            this.type = typ;
+        constructor(regionType: string, color: string, start: number, end: number, label: string, properties: any) {
+            this.regionType = regionType;
+            this.color = color;
             this.start = start;
             this.end = end;
-            this.text = text;
+            this.label = label;
+            this.properties = properties;
         }
-        category: string
-        type: string
+        regionType: string
+        color: string
         start: number
         end: number
-        text: string
+        label: string
+        properties: any
+    }
+
+    class ProtaelContent {
+        constructor(seq: string, pocketFeatures: Feature[], conservationScores: number[]) {
+            this.sequence = seq;
+            this.ftracks = [{ label: "Pockets", color: "blue", showLine: false, allowOverlap: false, features: pocketFeatures }]
+            if (conservationScores != null && conservationScores.length >= 0) {
+                this.qtracks = [{ label: "Evolutionary conservation", color: "gray", type: "column", values: conservationScores }]
+            }
+        }
+        sequence: string;
+        ftracks: Array<{ label: string, color: string, showLine: boolean, allowOverlap: boolean, features: Array<Feature> }>
+        qtracks: Array<{ label: string, color: string, type: string, values: number[] }> = []
     }
 
     export class SequenceView extends Views.View<SequenceController, {}, {}> {
         indexMap: LiteMol.Core.Utils.FastMap<number, number>;
         lastNumber: number | undefined;
         lastMouseOverFeature: any | undefined;
-        pVizSeqView: any = void 0;
+        protaelView: any = void 0;
 
         getResidue(seqIndex: number, model: Bootstrap.Entity.Molecule.Model) {
             let cacheId = `__resSelectionInfo-${seqIndex}`
             let result = this.getCacheItem(cacheId, model);
-            if (!result) result = this.setCacheItem(cacheId, Core.Structure.Query.residuesById(seqIndex), model)
+            if (!result) {
+                let pdbResIndex = this.controller.latestState.seq.indices[seqIndex];
+                result = this.setCacheItem(cacheId, Core.Structure.Query.residuesById(pdbResIndex), model)
+            }
             return result;
         }
 
@@ -55,7 +73,7 @@ namespace LiteMol.PrankWeb {
             let cache = this.controller.context.entityCache;
             let elements = Core.Structure.Query.apply(query, model.props.model).unionAtomIndices();
             let selection = Bootstrap.Interactivity.Info.selection(model, elements)
-            let selectionInfo = Bootstrap.Interactivity.Molecule.transformInteraction(selection) !;
+            let selectionInfo = Bootstrap.Interactivity.Molecule.transformInteraction(selection)!;
             let item = new CacheItem(query, selectionInfo)
             cache.set(model, cacheId, item)
             return item;
@@ -80,7 +98,7 @@ namespace LiteMol.PrankWeb {
                 if (!pocketVisibility[i]) return; // Skip over invisible pockets.
 
                 // Transform indices to sequential indices and then sort them
-                let sortedIndices = pocket.residueIds.map((index) => this.indexMap.get(index) !)
+                let sortedIndices = pocket.residueIds.map((index) => this.indexMap.get(index)!)
                     .sort((a, b) => (a - b));
                 let lastStart = -1;
                 let lastResNum = -1;
@@ -89,82 +107,79 @@ namespace LiteMol.PrankWeb {
                         lastStart = resNum;
                     } else {
                         if (lastResNum + 1 < resNum) {
-                            features.push(new Feature("Pockets", `${pocket.name} col${i % 8}`, lastStart, lastResNum, pocket.rank.toString()))
+                            let c = Colors.get(i % 8);
+                            features.push(new Feature("Pockets", `rgb(${c.r * 255}, ${c.g * 255}, ${c.b * 255})`, lastStart, lastResNum, pocket.rank.toString(), { "Pocket name": pocket.name }))
                             lastStart = resNum;
                         }
                     }
                     lastResNum = resNum;
                 })
-                features.push(new Feature("Pockets", `${pocket.name} col${i % 8}`, lastStart, lastResNum, pocket.rank.toString()))
+                let c = Colors.get(i % 8);
+                features.push(new Feature("Pockets", `rgb(${c.r * 255}, ${c.g * 255}, ${c.b * 255})`, lastStart, lastResNum, pocket.rank.toString(), { "Pocket name": pocket.name }))
             });
 
         }
 
         componentDidMount() {
             this.subscribe(this.controller.state, state => {
-                this.updatePViz();
+                this.updateProtael();
             });
-            this.initPViz();
+            this.updateProtael();
         }
 
         componentDidUpdate() {
-            this.updatePViz();
+            this.updateProtael();
         }
 
-        initPViz() {
+        createProtelContent() {
             let seq = this.controller.latestState.seq;
             console.log(seq);
-            if (seq.seq.length <= 0) return; // Sequence isn't loaded yet.
-            let pviz = getPviz();
-            let pockets = this.controller.latestState.pockets;
-
-            this.pVizSeqView = new pviz.SeqEntry({ sequence: seq.seq.join("") });
-            new pviz.SeqEntryAnnotInteractiveView({
-                model: this.pVizSeqView, el: '#seqView',
-                xChangeCallback: (pStart: number, pEnd: number) => {
-                    this.onLetterMouseEnter(Math.round(pStart) + 1);
-                }
-            }).render();
-
-            this.updatePViz();
-        }
-
-        updatePViz() {
-            if (!this.pVizSeqView) this.initPViz();
-            if (!this.pVizSeqView) return; // If something went wrong! 
-            // Clear pViz features and callbacks.
-            this.pVizSeqView.clear();
-            let pViz = getPviz();
-            pViz.FeatureDisplayer.mouseoverCallBacks = {};
-            pViz.FeatureDisplayer.mouseoutCallBacks = {};
-
-            let seq = this.controller.latestState.seq;
-            if (seq.seq.length <= 0) return; // Sequence isn't loaded yet.
-
+            if (seq.seq.length <= 0) return void 0; // Sequence isn't loaded yet.
             let features: Array<Feature> = []
             this.addPocketFeatures(features); // Add pocket features.
-            let pocketFeatureTypes = features.map((feature) => feature.type);
+
+            return new ProtaelContent(seq.seq.join(""), features, seq.scores);
+        }
+
+        updateProtael() {
+            let protaelContent = this.createProtelContent();
+            if (!protaelContent) return;
+
+            if (this.protaelView) {
+                try {
+                    let el = document.getElementsByClassName("protael_resizable").item(0)
+                    el.parentNode!.removeChild(el);
+                } catch (err) {
+                    console.log(`Unable to remove Protael, ${err}`);
+                }
+            }
+            let seqViewEl = document.getElementById("seqView");
+            if (!seqViewEl) {
+                console.log("No seqView element!");
+            }
+
+            this.protaelView = createProtael(protaelContent, "seqView", true);
+            this.protaelView.draw();
+            this.protaelView.onMouseOver((e: any) => {
+                if (e.offsetX == 0) return;
+                let seqNum = this.protaelView.toOriginalX(e.offsetX); 
+                this.onLetterMouseEnter(seqNum)
+            });
+
+            // pViz.FeatureDisplayer.mouseoverCallBacks = {};
+            // pViz.FeatureDisplayer.mouseoutCallBacks = {};
 
             // Add mouse callbacks.
-            pViz.FeatureDisplayer.addMouseoverCallback(pocketFeatureTypes, (feature: any) => {
+            /*
+            pViz.FeatureDisplayer.addMouseoverCallback(pocketFeatureLabels, (feature: any) => {
                 this.selectAndDisplayToastPocket(this.lastMouseOverFeature, false);
                 this.lastMouseOverFeature = this.parsePocketName(feature.type);
                 this.selectAndDisplayToastPocket(this.lastMouseOverFeature, true);
-            }).addMouseoutCallback(pocketFeatureTypes, (feature: any) => {
+            }).addMouseoutCallback(pocketFeatureLabels, (feature: any) => {
                 this.selectAndDisplayToastPocket(this.lastMouseOverFeature, false);
                 this.lastMouseOverFeature = void 0;
             });
-
-            let scores = seq.scores;
-            // Add conservation features.
-            if (scores != null && scores.length >= 0) {
-                scores.forEach((score, i) => {
-                    let s = score >= 0 ? score : 0;
-                    let s2 = (s * 10).toFixed(0); // There are 11 shades with selector score0, score1, ..., score10.
-                    features.push(new Feature("Conservation", "score" + s2, i, i, s.toFixed(2)));
-                });
-            }
-            this.pVizSeqView.addFeatures(features);
+            */
         }
 
         onLetterMouseEnter(seqNumber?: number) {
@@ -180,7 +195,7 @@ namespace LiteMol.PrankWeb {
         }
 
         selectAndDisplayToastLetter(seqNumber: number | undefined, isOn: boolean) {
-            if (!seqNumber) return;
+            if (!seqNumber || seqNumber < 0) return;
             let ctx = this.controller.context;
             let model = ctx.select('model')[0] as Bootstrap.Entity.Molecule.Model;
             if (!model) return;
@@ -248,7 +263,7 @@ namespace LiteMol.PrankWeb {
 
         render() {
             let seqId: number = -1;
-            return <div id="seqView" className="noselect" onMouseLeave={() => { this.onLetterMouseEnter(void 0); }}></div>
+            return <div id="seqView" className="noselect" /*onMouseLeave={() => { this.onLetterMouseEnter(void 0); }}*/></div>
         }
     }
 
