@@ -74,16 +74,18 @@ namespace LiteMol.PrankWeb {
 
         private toogleColoring(isVisible: boolean) {
             let mapping = DataLoader.getAtomColorMapping(this.props.plugin, this.props.model, false);
+            let pocketQuery = Query.atomsById.apply(null, this.props.pocket.surfAtomIds).compile()
             if (!mapping) return;
             if (isVisible) {
-                for (const atom of this.props.pocket.surfAtomIds) {
-                    mapping[atom - 1] = (this.props.index % 8) + 1; // Index of color that we want for the particular atom. i.e. Colors.get(i%8)
+                const colorIndex = (this.props.index % 8) + 1; // Index of color that we want for the particular atom. i.e. Colors.get(i%8);
+                for (const atom of pocketQuery(this.props.model.props.model.queryContext).unionAtomIndices()) {
+                    mapping[atom] = colorIndex;
                 }
             } else {
                 let originalMapping = DataLoader.getAtomColorMapping(this.props.plugin, this.props.model, true);
                 if (!originalMapping) return;
-                for (const atom of this.props.pocket.surfAtomIds) {
-                    mapping[atom - 1] = originalMapping[atom - 1];
+                for (const atom of pocketQuery(this.props.model.props.model.queryContext).unionAtomIndices()) {
+                    mapping[atom] = originalMapping[atom];
                 }
             }
             DataLoader.setAtomColorMapping(this.props.plugin, this.props.model, mapping, false);
