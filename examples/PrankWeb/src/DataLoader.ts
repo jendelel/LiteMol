@@ -17,7 +17,7 @@ namespace LiteMol.PrankWeb.DataLoader {
         let seqScores = seq.scores;
         if (seqScores != null) {
             seqIndices.forEach((seqIndex, i) => {
-                let shade = Math.round((seqScores[i]) * 10); // Shade within [0,10]
+                let shade = Math.round((1-seqScores[i]) * 10); // Shade within [0,10]
                 let query = Query.residuesById(seqIndex).compile()
                 for (const atom of query(model.props.model.queryContext).unionAtomIndices()) {
                     atomColorMap[atom] = shade + Colors.size + 1; // First there is fallbackColor(0), then pocketColors(1-9) and lastly conservation colors.
@@ -28,8 +28,10 @@ namespace LiteMol.PrankWeb.DataLoader {
 
         let pockets = prediction.props.pockets;
         pockets.forEach((pocket, i) => {
-            for (const atom of pocket.surfAtomIds) {
-                atomColorMap[atom - 1] = (i % 8) + 1; // Index of color that we want for the particular atom. i.e. Colors.get(i%8)
+            let pocketQuery = Query.atomsById.apply(null, pocket.surfAtomIds).compile()
+            const colorIndex = (i % 8) + 1; // Index of color that we want for the particular atom. i.e. Colors.get(i%8);
+            for (const atom of pocketQuery(model.props.model.queryContext).unionAtomIndices()) {
+                atomColorMap[atom] = colorIndex;
             }
         });
         return { atomColorMap, atomColorMapConservation };
