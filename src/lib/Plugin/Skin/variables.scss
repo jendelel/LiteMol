@@ -9,16 +9,16 @@ $info-vertical-padding: 6px;
 $slider-border-radius-base: 6px;
 
 // layout
-$expanded-top-height:    170px;
+$expanded-top-height:    240px;
 $expanded-bottom-height: 3 * $row-height + 2;
 $expanded-right-width:   290px;
 $expanded-left-width:    290px;
 
 $expanded-portrait-bottom-height: 10 * ($row-height + 1) + 3 * $control-spacing + 1;
-$expanded-portrait-top-height:    5 * $row-height + 1;
+$expanded-portrait-top-height:    8 * $row-height + 1;
 
 $standard-bottom-height: 8 * ($row-height + 1) + 3 * $control-spacing + 1;
-$standard-top-height:    5 * $row-height + 1;
+$standard-top-height:    8 * $row-height + 1;
 
 //////////////////////////////////////////////////
 // ENTITY COLORS
