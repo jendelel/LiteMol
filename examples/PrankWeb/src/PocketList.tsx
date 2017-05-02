@@ -15,10 +15,7 @@ namespace LiteMol.PrankWeb {
         selectionInfo: Bootstrap.Interactivity.Molecule.SelectionInfo
     }
 
-    export function tooglePocketVisibility(data: DataLoader.PrankData) {
-
-    }
-
+    
     export class PocketList extends React.Component<{ plugin: Plugin.Controller, data: DataLoader.PrankData }, {}> {
 
         calcConservationAvg() {
@@ -66,18 +63,18 @@ namespace LiteMol.PrankWeb {
                     let visible = (e.data.state.visibility === Bootstrap.Entity.Visibility.Full || e.data.state.visibility === Bootstrap.Entity.Visibility.Partial);
                     if (this.state.isVisible !== visible) {
                         this.setState({ isVisible: visible });
-                        this.toogleColoring(visible);
+                        this.toggleColoring(visible);
                     }
                 }
             });
         }
 
-        private toogleColoring(isVisible: boolean) {
+        private toggleColoring(isVisible: boolean) {
             let mapping = DataLoader.getAtomColorMapping(this.props.plugin, this.props.model, false);
             let pocketQuery = Query.atomsById.apply(null, this.props.pocket.surfAtomIds).compile()
             if (!mapping) return;
             if (isVisible) {
-                const colorIndex = (this.props.index % 8) + 1; // Index of color that we want for the particular atom. i.e. Colors.get(i%8);
+                const colorIndex = (this.props.index % Colors.size) + 1; // Index of color that we want for the particular atom. i.e. Colors.get(i%Colors.size);
                 for (const atom of pocketQuery(this.props.model.props.model.queryContext).unionAtomIndices()) {
                     mapping[atom] = colorIndex;
                 }
@@ -155,23 +152,21 @@ namespace LiteMol.PrankWeb {
 
         // https://css-tricks.com/left-align-and-right-align-text-on-the-same-line/
         render() {
-            let pocketClass = `pocket pocket${this.props.index % Colors.count()}`;
             let pocket = this.props.pocket;
             let focusIconDisplay = this.state.isVisible ? "inherit" : "none";
             let hideIconOpacity = this.state.isVisible ? 1 : 0.3;
-            return <div className={pocketClass}
-            /*onMouseEnter={() => { this.onPocketMouse(true); }}
-            onMouseLeave={() => { this.onPocketMouse(false); }}
-            onClick={() => { this.onPocketClick(); }}*/
+            let c = Colors.get(this.props.index % Colors.size);
+            return <div className={"pocket"} style={{borderColor: `rgb(${c.r * 255}, ${c.g * 255}, ${c.b * 255})`}}
             >
                 <button style={{ float: 'left', display: focusIconDisplay }} title="Focus" className="pocket-btn" onClick={() => { this.onPocketClick() }} onMouseEnter={() => { this.onPocketMouse(true) }} onMouseOut={() => { this.onPocketMouse(false) }}><span className="pocket-icon focus-icon" /></button>
                 <button style={{ float: 'right', opacity: hideIconOpacity }} title="Hide" className="pocket-btn" onClick={() => { this.toggleVisibility() }}><span className="pocket-icon hide-icon" /></button>
                 <div style={{ clear: 'both' }} />
 
-                <p style={{ float: 'left' }}>Pocket rank:</p><p style={{ float: 'right' }}>{pocket.rank}</p><div style={{ clear: 'both' }} />
-                <p style={{ float: 'left' }}>Pocket score:</p><p style={{ float: 'right' }}>{pocket.score}</p><div style={{ clear: 'both' }} />
-                <p style={{ float: 'left' }}>AA count:</p><p style={{ float: 'right' }}>{pocket.residueIds.length}</p><div style={{ clear: 'both' }} />
-                <p style={{ float: 'left', textDecoration: 'overline' }}>Conservation:</p><p style={{ float: 'right' }}>{this.props.conservationAvg}</p><div style={{ clear: 'both' }} />
+
+                <p style={{ float: 'left' }} className="pocket-feature">Pocket rank:</p><p style={{ float: 'right' }}>{pocket.rank}</p><div style={{ clear: 'both' }} />
+                <p style={{ float: 'left' }} className="pocket-feature">Pocket score:</p><p style={{ float: 'right' }}>{pocket.score}</p><div style={{ clear: 'both' }} />
+                <p style={{ float: 'left' }} className="pocket-feature">AA count:</p><p style={{ float: 'right' }}>{pocket.residueIds.length}</p><div style={{ clear: 'both' }} />
+                <p style={{ float: 'left', textDecoration: 'overline' }} className="pocket-feature">Conservation:</p><p style={{ float: 'right' }}>{this.props.conservationAvg}</p><div style={{ clear: 'both' }} />
             </div>
         }
     }
