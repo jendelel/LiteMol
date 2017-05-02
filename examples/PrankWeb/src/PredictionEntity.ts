@@ -23,7 +23,6 @@ namespace LiteMol.PrankWeb {
         Visualization.Color.fromRgb(0, 255, 0),      //Green
         Visualization.Color.fromRgb(255, 0, 255),    //Magenta
         Visualization.Color.fromRgb(255, 128, 128),  //Pink
-        Visualization.Color.fromRgb(128, 128, 128),  //Gray
         Visualization.Color.fromRgb(128, 0, 0),      //Brown
         Visualization.Color.fromRgb(255, 128, 0))    //Orange
 

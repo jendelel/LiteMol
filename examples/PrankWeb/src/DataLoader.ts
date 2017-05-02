@@ -29,7 +29,7 @@ namespace LiteMol.PrankWeb.DataLoader {
         let pockets = prediction.props.pockets;
         pockets.forEach((pocket, i) => {
             let pocketQuery = Query.atomsById.apply(null, pocket.surfAtomIds).compile()
-            const colorIndex = (i % 8) + 1; // Index of color that we want for the particular atom. i.e. Colors.get(i%8);
+            const colorIndex = (i % Colors.size) + 1; // Index of color that we want for the particular atom. i.e. Colors.get(i%Colors.size);
             for (const atom of pocketQuery(model.props.model.queryContext).unionAtomIndices()) {
                 atomColorMap[atom] = colorIndex;
             }

@@ -86,11 +86,11 @@ namespace LiteMol.PrankWeb {
             return item;
         }
 
-        addPocketFeatures(features: Feature[]) {
+            addPocketFeatures(features: Feature[]) {
             this.indexMap = LiteMol.Core.Utils.FastMap.create<number, number>();
-            // Build hashmap index->sequential index zero-based.
+            // Build hashmap index->sequential index one-based.
             this.controller.latestState.seq.indices.forEach((index, seqIndex) => {
-                this.indexMap.set(index, seqIndex);
+                this.indexMap.set(index, seqIndex + 1);
             })
             let pockets = this.controller.latestState.pockets;
             let pocketVisibility = this.controller.latestState.pocketVisibility;
@@ -107,14 +107,14 @@ namespace LiteMol.PrankWeb {
                         lastStart = resNum;
                     } else {
                         if (lastResNum + 1 < resNum) {
-                            let c = Colors.get(i % 8);
+                            let c = Colors.get(i % Colors.size);
                             features.push(new Feature("Pockets", `rgb(${c.r * 255}, ${c.g * 255}, ${c.b * 255})`, lastStart, lastResNum, pocket.rank.toString(), { "Pocket name": pocket.name }))
                             lastStart = resNum;
                         }
                     }
                     lastResNum = resNum;
                 })
-                let c = Colors.get(i % 8);
+                let c = Colors.get(i % Colors.size);
                 features.push(new Feature("Pockets", `rgb(${c.r * 255}, ${c.g * 255}, ${c.b * 255})`, lastStart, lastResNum, pocket.rank.toString(), { "Pocket name": pocket.name }))
             });
 
@@ -183,6 +183,7 @@ namespace LiteMol.PrankWeb {
         }
 
         onLetterMouseEnter(seqNumber?: number) {
+            if (!seqNumber && seqNumber != 0) return;
             if (this.lastNumber) {
                 if (this.lastNumber != seqNumber) {
                     this.selectAndDisplayToastLetter(this.lastNumber, false);
@@ -194,18 +195,15 @@ namespace LiteMol.PrankWeb {
             this.lastNumber = seqNumber;
         }
 
+        // Displays/Hides toast for given residue. SeqNumber is ***zero-based index*** of the residue.
         selectAndDisplayToastLetter(seqNumber: number | undefined, isOn: boolean) {
-            if (!seqNumber || seqNumber < 0) return;
+            if ((!seqNumber && seqNumber != 0) || seqNumber < 0) return;
             let ctx = this.controller.context;
             let model = ctx.select('model')[0] as Bootstrap.Entity.Molecule.Model;
             if (!model) return;
-            let map = this.indexMap;
-            if (!map) return;
-            let seqIndex = map.get(seqNumber);
-            if (!seqIndex) return;
 
             // Get the sequence selection
-            let seqSel = this.getResidue(seqIndex, model)
+            let seqSel = this.getResidue(seqNumber, model)
 
             // Highlight in the 3D Visualization
             Bootstrap.Command.Molecule.Highlight.dispatch(ctx, { model: model, query: seqSel.query, isOn })
