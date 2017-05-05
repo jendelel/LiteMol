@@ -19,6 +19,7 @@
   "files": [
     "../../dist/js/LiteMol-plugin.d.ts",
     
+    "./src/ControlButtons.tsx",
     "./src/SequenceEntity.ts",    
     "./src/PredictionEntity.ts",    
     "./src/SequenceView.tsx" ,
