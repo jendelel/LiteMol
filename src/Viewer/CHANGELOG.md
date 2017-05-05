@@ -1,3 +1,13 @@
+# 1.4.3
+* Updated PDBe Validation Report support to the latest version of the API.
+
+# 1.4.2
+* Simplified downloading/opening molecule data.
+* PDBe Validation Reports are no longer applied to HET residues.
+
+# 1.4.1
+* BinaryCIF is now the default format.
+
 # 1.4.0
 * Updated Density Streaming to work with the new DensityServer.
 * Added examples.

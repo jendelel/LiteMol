@@ -769,6 +769,25 @@ li{
 	max-width: 80%;
 }
 
+.lm-showcase-image {
+	float: left;
+	width: 25%;
+	max-width: 25%;
+	text-align: center;
+	display: block;
+}
+
+.lm-showcase-image img {
+	width: 75%;
+	max-width: 75%;
+	height: auto;
+	opacity: 0.75;
+}
+
+.lm-showcase-image img:hover {
+	opacity: 1.0;
+}
+
 .dens-section-image {
     display: block;
     text-align: center;    
@@ -910,13 +929,13 @@ img.lm-hero-logo-small {
     .nav > li{
         margin-top: 0;
         border-bottom:1px solid rgba(0,0,0,.1);
-        background:rgba(0,0,0,.05);
+        background: white;/*rgba(0,0,0,.5);*/
         text-align: left;
         padding-left:15px;
         width:100%;
     }
     .nav > li:hover{
-        background:rgba(0,0,0,.08);
+        background: white;/*rgba(0,0,0,.55);*/
     }
     .dropdown .dropdown a .caret{   
         float: none;
