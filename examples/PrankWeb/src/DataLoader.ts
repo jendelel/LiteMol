@@ -9,6 +9,22 @@ namespace LiteMol.PrankWeb.DataLoader {
         sequence: SequenceEntity;
     }
 
+    export function residuesBySeqNums(...seqNums: string[]) { 
+        return Query.residues(...seqNums.map(seqNum => {
+            let num = 0;
+            let insCode : string|null = null;
+            let parsedNum = seqNum.match(/^[0-9]*/);
+            let parsedInsCode = seqNum.match(/[A-Z]+$/);
+            if (parsedNum != null && parsedNum.length > 0) {
+                num = parseInt(parsedNum[0]);
+            }
+            if (parsedInsCode != null && parsedInsCode.length > 0) {
+                insCode = parsedInsCode[0];
+            }
+            return { authSeqNumber: num, insCode};
+        }));
+    }
+
     function initColorMapping(model: Bootstrap.Entity.Molecule.Model, prediction: Prediction, sequence: SequenceEntity) {
         const atomColorMapConservation = new Uint8Array(model.props.model.data.atoms.count);
         const atomColorMap = new Uint8Array(model.props.model.data.atoms.count);
@@ -18,7 +34,7 @@ namespace LiteMol.PrankWeb.DataLoader {
         if (seqScores != null) {
             seqIndices.forEach((seqIndex, i) => {
                 let shade = Math.round((1-seqScores[i]) * 10); // Shade within [0,10]
-                let query = Query.residuesById(seqIndex).compile()
+                let query = residuesBySeqNums(seqIndex).compile()
                 for (const atom of query(model.props.model.queryContext).unionAtomIndices()) {
                     atomColorMap[atom] = shade + Colors.size + 1; // First there is fallbackColor(0), then pocketColors(1-9) and lastly conservation colors.
                     atomColorMapConservation[atom] = shade + Colors.size + 1; // First there is fallbackColor(0), then pocketColors(1-9) and lastly conservation colors.

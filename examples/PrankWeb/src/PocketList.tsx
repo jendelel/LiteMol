@@ -22,7 +22,7 @@ namespace LiteMol.PrankWeb {
             let seq = this.props.data.sequence.props.seq;
             let pockets = this.props.data.prediction.props.pockets;
             if (!seq.scores || seq.scores.length <= 0) return pockets.map(() => "N/A");
-            let indexMap = LiteMol.Core.Utils.FastMap.create<number, number>();
+            let indexMap = LiteMol.Core.Utils.FastMap.create<string, number>();
             seq.indices.forEach((element, i) => { indexMap.set(element, i); });
             return pockets.map((pocket, i) => {
                 let scoreSum = pocket.residueIds.map((i) => seq.scores[indexMap.get(i)!]).reduce((acc, val) => acc + val, 0);

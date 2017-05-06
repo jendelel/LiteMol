@@ -16,7 +16,7 @@ namespace LiteMol.PrankWeb {
         selectionInfo: Bootstrap.Interactivity.Molecule.SelectionInfo
     }
 
-    class Feature {
+    class ProtaelFeature {
         constructor(regionType: string, color: string, start: number, end: number, label: string, properties: any) {
             this.regionType = regionType;
             this.color = color;
@@ -33,31 +33,50 @@ namespace LiteMol.PrankWeb {
         properties: any
     }
 
+    class ProtaelRegion {
+        constructor(label: string, start: number, end: number) {
+            this.label = label;
+            this.start = start;
+            this.end = end;
+        }
+        label: string;
+        start: number;
+        end: number;
+        color: string = "#DDD";
+        regionType: string = "Chain"
+    }
+
     class ProtaelContent {
-        constructor(seq: string, pocketFeatures: Feature[], conservationScores: number[]) {
+        constructor(seq: string, pocketFeatures: ProtaelFeature[], chains: ProtaelRegion[], conservationScores: number[], bindingSites: ProtaelFeature[]) {
             this.sequence = seq;
             this.ftracks = [{ label: "Pockets", color: "blue", showLine: false, allowOverlap: false, features: pocketFeatures }]
-            if (conservationScores != null && conservationScores.length >= 0) {
+            this.overlayfeatures = { label: "Chains", features: chains };
+            if (conservationScores != null && conservationScores.length > 0) {
                 this.qtracks = [{ label: "Evolutionary conservation", color: "gray", type: "column", values: conservationScores }]
+            }
+            if (bindingSites != null && bindingSites.length > 0) {
+                this.ftracks.push({ label: "Binding sites", color: "purple", showLine: false, allowOverlap: false, features: bindingSites });
             }
         }
         sequence: string;
-        ftracks: Array<{ label: string, color: string, showLine: boolean, allowOverlap: boolean, features: Array<Feature> }>
+        ftracks: Array<{ label: string, color: string, showLine: boolean, allowOverlap: boolean, features: Array<ProtaelFeature> }>
+        overlayfeatures: { label: string, features: Array<ProtaelRegion> }
         qtracks: Array<{ label: string, color: string, type: string, values: number[] }> = []
     }
 
     export class SequenceView extends Views.View<SequenceController, {}, {}> {
-        indexMap: LiteMol.Core.Utils.FastMap<number, number>;
+        indexMap: LiteMol.Core.Utils.FastMap<string, number>;
         lastNumber: number | undefined;
         lastMouseOverFeature: any | undefined;
         protaelView: any = void 0;
+        subscriptionHandle : Bootstrap.Rx.IDisposable
 
         getResidue(seqIndex: number, model: Bootstrap.Entity.Molecule.Model) {
             let cacheId = `__resSelectionInfo-${seqIndex}`
             let result = this.getCacheItem(cacheId, model);
             if (!result) {
                 let pdbResIndex = this.controller.latestState.seq.indices[seqIndex];
-                result = this.setCacheItem(cacheId, Core.Structure.Query.residuesById(pdbResIndex), model)
+                result = this.setCacheItem(cacheId, DataLoader.residuesBySeqNums(pdbResIndex), model)
             }
             return result;
         }
@@ -86,8 +105,28 @@ namespace LiteMol.PrankWeb {
             return item;
         }
 
-            addPocketFeatures(features: Feature[]) {
-            this.indexMap = LiteMol.Core.Utils.FastMap.create<number, number>();
+        indicesToSequenceSegments(sortedIndices: number[]) {
+            let result: { start: number, end: number }[] = [];
+            // Transform indices to sequential indices and then sort them
+            let lastStart = -1;
+            let lastResNum = -1;
+            sortedIndices.forEach((resNum, y) => {
+                if (y == 0) {
+                    lastStart = resNum;
+                } else {
+                    if (lastResNum + 1 < resNum) {
+                        result.push({ start: lastStart, end: lastResNum });
+                        lastStart = resNum;
+                    }
+                }
+                lastResNum = resNum;
+            })
+            result.push({ start: lastStart, end: lastResNum });
+            return result;
+        }
+
+        addPocketFeatures(features: ProtaelFeature[]) {
+            this.indexMap = LiteMol.Core.Utils.FastMap.create<string, number>();
             // Build hashmap index->sequential index one-based.
             this.controller.latestState.seq.indices.forEach((index, seqIndex) => {
                 this.indexMap.set(index, seqIndex + 1);
@@ -97,34 +136,55 @@ namespace LiteMol.PrankWeb {
             pockets.forEach((pocket, i) => {
                 if (!pocketVisibility[i]) return; // Skip over invisible pockets.
 
-                // Transform indices to sequential indices and then sort them
                 let sortedIndices = pocket.residueIds.map((index) => this.indexMap.get(index)!)
                     .sort((a, b) => (a - b));
-                let lastStart = -1;
-                let lastResNum = -1;
-                sortedIndices.forEach((resNum, y) => {
-                    if (y == 0) {
-                        lastStart = resNum;
-                    } else {
-                        if (lastResNum + 1 < resNum) {
-                            let c = Colors.get(i % Colors.size);
-                            features.push(new Feature("Pockets", `rgb(${c.r * 255}, ${c.g * 255}, ${c.b * 255})`, lastStart, lastResNum, pocket.rank.toString(), { "Pocket name": pocket.name }))
-                            lastStart = resNum;
-                        }
-                    }
-                    lastResNum = resNum;
-                })
-                let c = Colors.get(i % Colors.size);
-                features.push(new Feature("Pockets", `rgb(${c.r * 255}, ${c.g * 255}, ${c.b * 255})`, lastStart, lastResNum, pocket.rank.toString(), { "Pocket name": pocket.name }))
+                let segments = this.indicesToSequenceSegments(sortedIndices);
+                for (const s of segments) {
+                    let c = Colors.get(i % Colors.size);
+                    features.push(new ProtaelFeature("Pockets", `rgb(${c.r * 255}, ${c.g * 255}, ${c.b * 255})`, s.start, s.end, pocket.rank.toString(), { "Pocket name": pocket.name }))
+                }
             });
+        }
 
+        getBindingSites() {
+            let result: ProtaelFeature[] = [];
+            let sites = this.controller.latestState.seq.bindingSites;
+            if (sites && sites.length > 0) {
+                let sortedIndices = sites.sort((a, b) => (a - b));
+                let segments = this.indicesToSequenceSegments(sortedIndices);
+                for (const s of segments) {
+                    result.push(new ProtaelFeature("Binding site", "purple", s.start, s.end, "", void 0));
+                }
+            }
+            return result;
+        }
+
+        getChainRegions() {
+            let result: ProtaelRegion[] = [];
+            this.controller.latestState.seq.regions.forEach((region, i) => {
+                result.push(new ProtaelRegion(`Chain ${region.regionName}`, region.start + 1, region.end + 1));
+            });
+            return result;
         }
 
         componentDidMount() {
-            this.subscribe(this.controller.state, state => {
+            this.subscriptionHandle = this.subscribe(this.controller.state, state => {
                 this.updateProtael();
             });
             this.updateProtael();
+        }
+
+        componentWillUnmount() {
+            this.unsubscribe(this.subscriptionHandle)
+            if (this.protaelView) {
+                try {
+                    let el = document.getElementsByClassName("protael_resizable").item(0)
+                    el.parentNode!.removeChild(el);
+                } catch (err) {
+                    console.log(`Unable to remove Protael, ${err}`);
+                }
+            }
+            this.fixProtaelHeight(true);
         }
 
         componentDidUpdate() {
@@ -135,10 +195,12 @@ namespace LiteMol.PrankWeb {
             let seq = this.controller.latestState.seq;
             console.log(seq);
             if (seq.seq.length <= 0) return void 0; // Sequence isn't loaded yet.
-            let features: Array<Feature> = []
+            let features: Array<ProtaelFeature> = []
             this.addPocketFeatures(features); // Add pocket features.
+            let chainRegions = this.getChainRegions();
+            let bindingSites = this.getBindingSites();
 
-            return new ProtaelContent(seq.seq.join(""), features, seq.scores);
+            return new ProtaelContent(seq.seq.join(""), features, chainRegions, seq.scores, bindingSites);
         }
 
         updateProtael() {
@@ -162,9 +224,10 @@ namespace LiteMol.PrankWeb {
             this.protaelView.draw();
             this.protaelView.onMouseOver((e: any) => {
                 if (e.offsetX == 0) return;
-                let seqNum = this.protaelView.toOriginalX(e.offsetX); 
+                let seqNum = this.protaelView.toOriginalX(e.offsetX);
                 this.onLetterMouseEnter(seqNum)
             });
+            this.fixProtaelHeight();
 
             // pViz.FeatureDisplayer.mouseoverCallBacks = {};
             // pViz.FeatureDisplayer.mouseoutCallBacks = {};
@@ -180,6 +243,46 @@ namespace LiteMol.PrankWeb {
                 this.lastMouseOverFeature = void 0;
             });
             */
+        }
+
+        forEachNodeInSelector(elemets: NodeListOf<Element>, fnc: (el: HTMLElement, i?: number) => void) {
+            for (let i: number = 0; i < elemets.length; i++) {
+                let el = elemets.item(i) as HTMLElement;
+                if (!el) continue;
+                fnc(el, i);
+            }
+        }
+
+        fixProtaelHeight(clear : boolean = false) {
+            let protael = document.getElementById('seqView');
+            if (!protael && !clear) return;
+            let height = !clear ? protael!.scrollHeight.toString().concat("px") : null;
+            let minusHeight = !clear ?  "-".concat(protael!.scrollHeight.toString().concat("px")) : null;
+            this.forEachNodeInSelector(document.querySelectorAll(".lm-plugin .lm-layout-standard-outside .lm-layout-top"),
+                el => { el.style.height = height; el.style.top = minusHeight });
+            this.forEachNodeInSelector(document.querySelectorAll(".lm-plugin .lm-layout-standard-outside .lm-layout-bottom"),
+                el => { el.style.height = height; el.style.top = minusHeight });
+
+            this.forEachNodeInSelector(document.querySelectorAll(".lm-plugin .lm-layout-standard-landscape .lm-layout-main"),
+                el => { el.style.top = height; });
+            this.forEachNodeInSelector(document.querySelectorAll(".lm-plugin .lm-layout-standard-landscape .lm-layout-top"),
+                el => { el.style.height = height; });
+
+            this.forEachNodeInSelector(document.querySelectorAll(".lm-plugin .lm-layout-standard-portrait .lm-layout-main"),
+                el => { el.style.top = height; });
+            this.forEachNodeInSelector(document.querySelectorAll(".lm-plugin .lm-layout-standard-portrait .lm-layout-top"),
+                el => { el.style.height = height; });
+            this.forEachNodeInSelector(document.querySelectorAll(".lm-plugin .lm-layout-standard-portrait .lm-layout-bottom"),
+                el => { el.style.height = height; });
+
+            this.forEachNodeInSelector(document.querySelectorAll(".lm-plugin .lm-layout-expanded .lm-layout-main"),
+                el => { el.style.top = height; });
+            this.forEachNodeInSelector(document.querySelectorAll(".lm-plugin .lm-layout-expanded .lm-layout-top"),
+                el => { el.style.height = height; });
+            this.forEachNodeInSelector(document.querySelectorAll(".lm-plugin .lm-layout-expanded .lm-layout-bottom"),
+                el => { el.style.height = height; });
+
+            this.controller.context.scene.scene.resized();
         }
 
         onLetterMouseEnter(seqNumber?: number) {
@@ -261,13 +364,13 @@ namespace LiteMol.PrankWeb {
 
         render() {
             let seqId: number = -1;
-            return <div id="seqView" className="noselect" /*onMouseLeave={() => { this.onLetterMouseEnter(void 0); }}*/></div>
+            return <div id="seqView" className="noselect" onMouseLeave={() => { this.onLetterMouseEnter(void 0); }} />
         }
     }
 
     export class SequenceController extends Bootstrap.Components.Component<{ seq: Sequence, pockets: PrankPocket[], pocketVisibility: boolean[], version: number }> {
         constructor(context: Bootstrap.Context) {
-            super(context, { seq: { indices: [], seq: [], scores: [] }, pockets: [], pocketVisibility: [], version: 0 });
+            super(context, { seq: { indices: [], seq: [], scores: [], bindingSites: [], regions: [] }, pockets: [], pocketVisibility: [], version: 0 });
 
             Bootstrap.Event.Tree.NodeAdded.getStream(context).subscribe(e => {
                 if (e.data.type === SequenceEntity) {

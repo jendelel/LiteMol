@@ -13,7 +13,7 @@ namespace LiteMol.PrankWeb {
         centerX: number;
         centerY: number;
         centerZ: number;
-        residueIds: Array<number>
+        residueIds: Array<string>
         surfAtomIds: Array<number>
     }
 

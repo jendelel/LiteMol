@@ -5,9 +5,11 @@ namespace LiteMol.PrankWeb {
     import Transformer = Bootstrap.Entity.Transformer;
 
     export interface Sequence {
-        indices: number[]
+        indices: string[]
         seq: string[]
-        scores: number[]
+        scores : number[]
+        regions: Array<{ regionName: string, start: number, end: number }>
+        bindingSites: number[]
     }
 
     export interface SequenceEntity extends Entity<{ seq: Sequence }> { }
