@@ -12,7 +12,7 @@ namespace LiteMol.PrankWeb {
             target,
             viewportBackground: '#e7e7e7', // white
             layoutState: {
-                hideControls: true, 
+                hideControls: true,
                 isExpanded: false,
                 collapsedControlsLayout: Bootstrap.Components.CollapsedControlsLayout.Landscape,
             },
@@ -20,18 +20,18 @@ namespace LiteMol.PrankWeb {
         });
         plugin.context.logger.message(`LiteMol ${Plugin.VERSION.number}`);
         plugin.command(Bootstrap.Command.Layout.SetState, {
-            regionStates: {[Bootstrap.Components.LayoutRegion.Top]: 'Sticky'}
+            regionStates: { [Bootstrap.Components.LayoutRegion.Top]: 'Sticky' }
         })
         return plugin;
     }
 
     // Div that LiteMol mounts into.
-    let appNode = document.getElementById('app') !
+    let appNode = document.getElementById('app')!
     // Div that control panel mounts into.
-    let pocketNode = document.getElementById('pocket-list') !
+    let pocketNode = document.getElementById('pocket-list')!
 
     // Specify what data to display.
-    let inputType: string = appNode.getAttribute("data-input-type") !
-    let inputId: string = appNode.getAttribute("data-input-id") !
+    let inputType: string = appNode.getAttribute("data-input-type")!
+    let inputId: string = appNode.getAttribute("data-input-id")!
     App.render(create(appNode), inputType, inputId, pocketNode);
 }

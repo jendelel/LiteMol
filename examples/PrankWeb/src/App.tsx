@@ -33,7 +33,7 @@ namespace LiteMol.PrankWeb.App {
             if (this.state.data) {
                 // Data available, display controls and pocket list.
                 let controls: any[] = [];
-                controls.push(<ControlButtons inputId={this.props.inputId} inputType={this.props.inputType}/>)
+                controls.push(<ControlButtons plugin={this.props.plugin} inputId={this.props.inputId} inputType={this.props.inputType}/>)
                 controls.push(<PocketList data={this.state.data!} plugin={this.props.plugin} />)
                 return <div>{controls}</div>
             } else {
