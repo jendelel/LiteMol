@@ -69,7 +69,7 @@ namespace LiteMol.PrankWeb {
         lastNumber: number | undefined;
         lastMouseOverFeature: any | undefined;
         protaelView: any = void 0;
-        subscriptionHandle : Bootstrap.Rx.IDisposable
+        subscriptionHandle: Bootstrap.Rx.IDisposable
 
         getResidue(seqIndex: number, model: Bootstrap.Entity.Molecule.Model) {
             let cacheId = `__resSelectionInfo-${seqIndex}`
@@ -129,7 +129,7 @@ namespace LiteMol.PrankWeb {
             this.indexMap = LiteMol.Core.Utils.FastMap.create<string, number>();
             // Build hashmap index->sequential index one-based.
             this.controller.latestState.seq.indices.forEach((index, seqIndex) => {
-                this.indexMap.set(index, seqIndex + 1);
+                this.indexMap.set(index, seqIndex);
             })
             let pockets = this.controller.latestState.pockets;
             let pocketVisibility = this.controller.latestState.pocketVisibility;
@@ -141,7 +141,7 @@ namespace LiteMol.PrankWeb {
                 let segments = this.indicesToSequenceSegments(sortedIndices);
                 for (const s of segments) {
                     let c = Colors.get(i % Colors.size);
-                    features.push(new ProtaelFeature("Pockets", `rgb(${c.r * 255}, ${c.g * 255}, ${c.b * 255})`, s.start, s.end, pocket.rank.toString(), { "Pocket name": pocket.name }))
+                    features.push(new ProtaelFeature("Pockets", `rgb(${c.r * 255}, ${c.g * 255}, ${c.b * 255})`, s.start + 1, s.end + 1, pocket.rank.toString(), { "Pocket name": pocket.name }))
                 }
             });
         }
@@ -153,7 +153,7 @@ namespace LiteMol.PrankWeb {
                 let sortedIndices = sites.sort((a, b) => (a - b));
                 let segments = this.indicesToSequenceSegments(sortedIndices);
                 for (const s of segments) {
-                    result.push(new ProtaelFeature("Binding site", "purple", s.start, s.end, "", void 0));
+                    result.push(new ProtaelFeature("Binding site", "purple", s.start + 1, s.end + 1, "", void 0));
                 }
             }
             return result;
@@ -224,11 +224,13 @@ namespace LiteMol.PrankWeb {
             this.protaelView.draw();
             this.protaelView.onMouseOver((e: any) => {
                 if (e.offsetX == 0) return;
-                let seqNum = this.protaelView.toOriginalX(e.offsetX);
+                // We use zero-based indexing for residues.
+                let seqNum = this.protaelView.toOriginalX(this.protaelView.mouseToSvgXY(e).x) - 1;
                 this.onLetterMouseEnter(seqNum)
             });
             this.fixProtaelHeight();
 
+            this.addMouseEvents();
             // pViz.FeatureDisplayer.mouseoverCallBacks = {};
             // pViz.FeatureDisplayer.mouseoutCallBacks = {};
 
@@ -253,11 +255,28 @@ namespace LiteMol.PrankWeb {
             }
         }
 
-        fixProtaelHeight(clear : boolean = false) {
+        addMouseEvents() {
+            let protael = document.getElementById('seqView');
+            if (!protael) return;
+            let features = document.querySelectorAll(".pl-ftrack .pl-feature");
+            this.forEachNodeInSelector(features, el => {
+                if (el.parentElement!.id == "Pockets") {
+                    let pocket = this.parsePocketName(el.attributes.getNamedItem("data-d").value);
+                    el.onclick = () => this.onPocketClick(pocket);
+                    el.onmouseover = () => this.selectAndDisplayToastPocket(pocket, true);
+                    el.onmouseout = () => this.selectAndDisplayToastPocket(pocket, false);
+                } else if (el.parentElement!.id == "Binding sites") {
+                    el.onmouseover = () => this.selectAndDisplayToastBindingSites(true);
+                    el.onmouseout = () => this.selectAndDisplayToastBindingSites(false);
+                }
+            })
+        }
+
+        fixProtaelHeight(clear: boolean = false) {
             let protael = document.getElementById('seqView');
             if (!protael && !clear) return;
             let height = !clear ? protael!.scrollHeight.toString().concat("px") : null;
-            let minusHeight = !clear ?  "-".concat(protael!.scrollHeight.toString().concat("px")) : null;
+            let minusHeight = !clear ? "-".concat(protael!.scrollHeight.toString().concat("px")) : null;
             this.forEachNodeInSelector(document.querySelectorAll(".lm-plugin .lm-layout-standard-outside .lm-layout-top"),
                 el => { el.style.height = height; el.style.top = minusHeight });
             this.forEachNodeInSelector(document.querySelectorAll(".lm-plugin .lm-layout-standard-outside .lm-layout-bottom"),
@@ -320,11 +339,40 @@ namespace LiteMol.PrankWeb {
             }
         }
 
-        parsePocketName(pocketFeatureType: string) {
+        // Displays/Hides toast for all binding sites.
+        selectAndDisplayToastBindingSites(isOn: boolean) {
+            let ctx = this.controller.context;
+            let model = ctx.select('model')[0] as Bootstrap.Entity.Molecule.Model;
+            if (!model) return;
+
+            // Get the sequence selection
+            let cacheId = '__resSelectionInfo-bindingSites__'
+            let sel = this.getCacheItem(cacheId, model);
+            if (!sel) {
+                let indices = this.controller.latestState.seq.indices;
+                let bindingSites = this.controller.latestState.seq.bindingSites.map(i=>indices[i]);
+                sel = this.setCacheItem(cacheId, DataLoader.residuesBySeqNums(...bindingSites), model)
+            }
+
+            // Highlight in the 3D Visualization
+            Bootstrap.Command.Molecule.Highlight.dispatch(ctx, { model: model, query: sel.query, isOn })
+            if (isOn) {
+                // Show tooltip
+                let label = Bootstrap.Interactivity.Molecule.formatInfo(sel.selectionInfo)
+                Bootstrap.Event.Interactivity.Highlight.dispatch(ctx, [label/*, 'some additional label'*/])
+            } else {
+                // Hide tooltip
+                Bootstrap.Event.Interactivity.Highlight.dispatch(ctx, [])
+            }
+        }
+
+        parsePocketName(featureData: string | undefined) {
             // Using the fact that * is greedy, so it will match everything up to and including the last space.
-            let res = pocketFeatureType.match(".* ");
-            if (!res) return void 0;
-            let pocketName = res[0].trim();
+            if (!featureData) return void 0;
+            let featureDataParsed = JSON.parse(featureData);
+            if (!featureDataParsed) return void 0;
+            let pocketName = featureDataParsed['Pocket name'];
+            if (!pocketName) return void 0;
             let pocketRes: PrankPocket | undefined = void 0;
             this.controller.latestState.pockets.forEach((pocket) => {
                 if (pocket.name == pocketName) pocketRes = pocket;
@@ -353,12 +401,12 @@ namespace LiteMol.PrankWeb {
             }
         }
 
-        onLetterClick(seqNumber: number, letter: string) {
+        onPocketClick(pocket: PrankPocket | undefined) {
             let ctx = this.controller.context;
             let model = ctx.select('model')[0] as Bootstrap.Entity.Molecule.Model;
-            if (!model) return;
+            if (!model || !pocket) return;
 
-            let query = this.getResidue(seqNumber, model).query
+            let query = this.getPocket(pocket, model).query
             Bootstrap.Command.Molecule.FocusQuery.dispatch(ctx, { model, query })
         }
 
