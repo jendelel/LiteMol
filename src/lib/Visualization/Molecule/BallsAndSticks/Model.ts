@@ -9,6 +9,7 @@ namespace LiteMol.Visualization.Molecule.BallsAndSticks {
         tessalation?: number;
         atomRadius?: (i: number) => number;
         hideBonds?: boolean;
+        hideHydrogens?: boolean;
         bondRadius?: number;
         customMaxBondLengths?: { get(e: string): number | undefined, has(e: string): boolean };
     }
@@ -17,6 +18,7 @@ namespace LiteMol.Visualization.Molecule.BallsAndSticks {
         tessalation: 3,
         atomRadius: () => 0.4,
         hideBonds: false,
+        hideHydrogens: false,
         bondRadius: 0.15,
         customMaxBondLengths: void 0
     }
@@ -68,11 +70,11 @@ namespace LiteMol.Visualization.Molecule.BallsAndSticks {
                 
         applyThemeInternal(theme: Theme) {
             let map = this.ballsAndSticks.atomVertexMap;
-            MaterialsHelper.applyColorToMap(map, map.elementIndices, (<any>this.ballsAndSticks.atomsGeometry.attributes).color, (i, c) => this.theme.setElementColor(i, c));
+            MaterialsHelper.applyColorToMap(map, (<any>this.ballsAndSticks.atomsGeometry.attributes).color, (i, c) => this.theme.setElementColor(i, c));
 
-            map = this.ballsAndSticks.bondVertexMap;
+            //map = this.ballsAndSticks.bondVertexMap;
             let bondColor = Theme.getColor(theme, 'Bond', Colors.DefaultBondColor);
-            MaterialsHelper.applyColorToMap(map, map.elementIndices, (<any>this.ballsAndSticks.bondsGeometry.attributes).color, (i, c) => Color.copy(bondColor, c));
+            MaterialsHelper.applyColorToBuffer((<any>this.ballsAndSticks.bondsGeometry.attributes).color, bondColor);
                         
             MaterialsHelper.updateMaterial(this.material, theme, this.object);
             MaterialsHelper.updateMaterial(this.bondsMaterial, theme, this.object);

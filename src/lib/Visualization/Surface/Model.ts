@@ -46,7 +46,11 @@ namespace LiteMol.Visualization.Surface {
         }
 
         highlightElement(pickId: number, highlight: boolean): boolean {
-            return this.applySelection(this.getPickElements(pickId), highlight ? Selection.Action.Highlight : Selection.Action.RemoveHighlight);
+            if (this.surface.annotation) {
+                return this.applySelection(this.getPickElements(pickId), highlight ? Selection.Action.Highlight : Selection.Action.RemoveHighlight);
+            } else {
+                return this.highlightInternal(highlight);
+            }
         }
                 
         protected highlightInternal(isOn: boolean) {
@@ -58,8 +62,8 @@ namespace LiteMol.Visualization.Surface {
             return [pickId - 1];
         }
 
-        getBoundingSphereOfSelection(indices: number[]): { radius: number, center: Core.Geometry.LinearAlgebra.ObjectVec3 } | undefined {
-            if (!this.geometry.vertexToElementMap) return { radius: this.radius, center: this.centroid };
+        getBoundingSphereOfSelection(indices: number[]): { radius: number, center: Core.Geometry.LinearAlgebra.Vector3 } | undefined {
+            if (!this.geometry.vertexToElementMap) return { radius: this.radius, center: Core.Geometry.LinearAlgebra.Vector3.fromObj(this.centroid) };
 
             let vs = <number[]>(<any>this.geometry.geometry.attributes).position.array;
             let center = new THREE.Vector3(), count = 0;
@@ -112,7 +116,7 @@ namespace LiteMol.Visualization.Surface {
 
             return {
                 radius,
-                center: { x: center.x, y: center.y, z: center.z } 
+                center: Core.Geometry.LinearAlgebra.Vector3.fromObj(center) 
             };
         }
         
@@ -204,7 +208,8 @@ namespace LiteMol.Visualization.Surface {
                 ret.pickMaterial = MaterialsHelper.getPickMaterial();
                                 
                 ret.entity = entity;
-                ret.centroid = new THREE.Vector3().copy(<any>surface.boundingSphere!.center);
+                const center = surface.boundingSphere!.center;
+                ret.centroid = new THREE.Vector3(center[0], center[1], center[2]);
                 ret.radius = surface.boundingSphere!.radius;
                 
                 if (props) ret.props = props;

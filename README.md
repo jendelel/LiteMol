@@ -1,6 +1,6 @@
 
-[![Version](https://img.shields.io/badge/Version-2.2.1_preview-blue.svg?style=flat)](CHANGELOG.md)
-[![Latest Release](https://img.shields.io/badge/Latest%20Release-1.0-blue.svg?style=flat)](https://github.com/dsehnal/LiteMol/releases/tag/v1.0)
+[![Version](https://img.shields.io/badge/Version-2.4.0-blue.svg?style=flat)](CHANGELOG.md)
+[![Latest Release](https://img.shields.io/badge/Latest%20Release-2-blue.svg?style=flat)](https://github.com/dsehnal/LiteMol/releases/tag/v2)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg?style=flat)](https://github.com/dsehnal/LiteMol/blob/master/LICENSE)
 
 ![Logo](web/assets/img/lm_logo_small.png)
@@ -68,13 +68,17 @@ See the [Examples folder](examples).
 Building
 ========
 
-Install Node.js (tested on version 6.4.0).
+Install Node.js (tested on version 8).
 
 LiteMol is written in TypeScript and needs to be compiled to JavaScript before use. To build it, use
 
     npm install -g gulp
     npm install
     gulp
+
+On Windows, it might be required to install the package `windows-build-tools` before the `npm intall` command:
+
+    npm install windows-build-tools -g
 
 Any subsequent full LiteMol builds can be done using just the command 
 
@@ -127,27 +131,21 @@ Currently, our priority is to improve these things:
 Releases
 --------
 
-The latest stable release of LiteMol is the [version 1.0](https://github.com/dsehnal/LiteMol/releases/tag/v1.0).
+The latest stable release of LiteMol is the [version 2](https://github.com/dsehnal/LiteMol/releases/tag/v2).
 
-Currently, the version 2.0 is being developed and is in a "preview" phase, meaning that a number of breaking changes will be introduced.
 Migration summary can be found [here](docs/migrating/1-to-2.md).
 
 Short term goals 
 ---------
 
-These features are planned to be introduced during the first half of 2017. 
+These features are planned to be introduced in version 3:
 
 **Core features**
 * Improving extension support: 
   * Streamline the process of extension creation.
   * Support for dynamic extension loading.
-  * _Will require breaking changes._
 * Support for saving and restoring the state of the application.
-  * _Will require breaking changes._
-* More visual primitives (spheres, cylinders, arrows, etc.). This is partially implemented.
-* Support for labels in the 3D scene.  
 * Improved internal data representation of molecules.
-  * _Will require breaking changes._
 
 Long term goals
 ----------

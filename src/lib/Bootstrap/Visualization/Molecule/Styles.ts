@@ -32,6 +32,7 @@ namespace LiteMol.Bootstrap.Visualization.Molecule {
         vdwScaling?: number,
         atomRadius?: number,
         bondRadius: number,
+        hideHydrogens?: boolean,
         customMaxBondLengths?: { [e: string]: number }
     }
     
@@ -51,12 +52,13 @@ namespace LiteMol.Bootstrap.Visualization.Molecule {
             vdwScaling: 0.22,
             atomRadius: 0.35,
             bondRadius: 0.09,
+            hideHydrogens: false,
             customMaxBondLengths: void 0,
             detail: 'Automatic'
         };
         
         export const SurfaceParams: SurfaceParams = {
-            probeRadius: 1.4,
+            probeRadius: 0.4,
             automaticDensity: true,
             density: 1.1,
             smoothing: 10,

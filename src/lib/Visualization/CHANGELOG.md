@@ -1,4 +1,19 @@
-﻿# 1.6.7
+﻿# 1.7.2
+* Ability to hide hydrogens in Balls and Sticks models.
+
+# 1.7.1
+* MouseWheel event is now triggered only if the user moves the mouse over the area.
+* Refactored balls and sticks model to include metallic bonds.
+* Added geometry builder.
+* Added dashed lines indicating gaps in cartoon models.
+
+# 1.7.0
+* Added support for labels.
+* Added support for additional primitives.
+* Updated Surface primitive transforms.
+* Fixed surface highlighting.
+
+# 1.6.7
 * Ability to customize maximum H bond length.
 
 # 1.6.6

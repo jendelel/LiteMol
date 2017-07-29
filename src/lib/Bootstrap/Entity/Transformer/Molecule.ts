@@ -164,18 +164,18 @@ namespace LiteMol.Bootstrap.Entity.Transformer.Molecule {
         inFullContext?: boolean
     }
 
-    export const CreateSelectionFromQuery = Tree.Transformer.create<Entity.Molecule.Model | Entity.Molecule.Visual, Entity.Molecule.Selection, CreateSelectionFromQueryParams>({
+    export const CreateSelectionFromQuery = Tree.Transformer.create<Entity.Molecule.Model | Entity.Molecule.Visual | Entity.Molecule.Selection, Entity.Molecule.Selection, CreateSelectionFromQueryParams>({
         id: 'molecule-create-selection',
         name: 'Selection',
         description: 'Create an atom selection.',
-        from: [Entity.Molecule.Model, Entity.Molecule.Visual],
+        from: [Entity.Molecule.Selection, Entity.Molecule.Model, Entity.Molecule.Visual],
         to: [Entity.Molecule.Selection],
         defaultParams: ctx => void 0,
     }, (ctx, a, t) => {
         return Task.create<Entity.Molecule.Selection>(`Create Selection (${a.props.label})`, 'Background', async ctx => {
             let params = t.params;
             let query = Core.Structure.Query.Builder.toQuery(params.query);
-            let queryCtx = t.params.inFullContext ? Utils.Molecule.findModel(a) !.props.model.queryContext : Utils.Molecule.findQueryContext(a);
+            let queryCtx = t.params.inFullContext ? Utils.Molecule.findModel(a)!.props.model.queryContext : Utils.Molecule.findQueryContext(a);
             let indices = query(queryCtx).unionAtomIndices();
             if (!indices.length) {
                 throw { warn: true, message: `Empty selection${t.params.name ? ' (' + t.params.name + ')' : ''}.` };
@@ -284,11 +284,11 @@ namespace LiteMol.Bootstrap.Entity.Transformer.Molecule {
         return Task.create<Entity.Molecule.Model>(`Transform 3D (${a.props.label})`, 'Normal', async ctx => {
             await ctx.updateProgress('Transforming...');
             let m = a.props.model;
-            let tCtx = { t: t.params.transform!, v: { x: 0, y: 0, z: 0 } };
+            let tCtx = { t: t.params.transform!, v: Core.Geometry.LinearAlgebra.Vector3.zero() };
             let transformed = Core.Structure.Molecule.Model.withTransformedXYZ(m, tCtx, (ctx, x, y, z, out) => {
                 let v = ctx.v;
-                v.x = x; v.y = y; v.z = z;
-                Core.Geometry.LinearAlgebra.Matrix4.transformVector3(out, v, ctx.t);
+                Core.Geometry.LinearAlgebra.Vector3.set(v, x, y, z);
+                Core.Geometry.LinearAlgebra.Vector3.transformMat4(out, v, ctx.t);
             });
 
             return Entity.Molecule.Model.create(t, {
@@ -344,11 +344,11 @@ namespace LiteMol.Bootstrap.Entity.Transformer.Molecule {
         waterRef?: string
     }
 
-    export const CreateMacromoleculeVisual = Tree.Transformer.action<Entity.Molecule.Model, Entity.Action, CreateMacromoleculeVisualParams>({
+    export const CreateMacromoleculeVisual = Tree.Transformer.action<Entity.Molecule.Model | Entity.Molecule.Selection, Entity.Action, CreateMacromoleculeVisualParams>({
         id: 'molecule-create-macromolecule-visual',
         name: 'Macromolecule Visual',
         description: 'Create a visual of a molecule that is split into polymer, HET, and water parts.',
-        from: [Entity.Molecule.Model],
+        from: [Entity.Molecule.Selection, Entity.Molecule.Model],
         to: [Entity.Action],
         validateParams: p => !p.polymer && !p.het && !p.water ? ['Select at least one component'] : void 0,
         defaultParams: ctx => ({ polymer: true, het: true, water: true }),
@@ -356,13 +356,13 @@ namespace LiteMol.Bootstrap.Entity.Transformer.Molecule {
         let g = Tree.Transform.build().add(a, Basic.CreateGroup, { label: 'Group', description: 'Macromolecule' }, { ref: t.params.groupRef });
 
         if (t.params.polymer) {
-            let polymer = g.then(CreateSelectionFromQuery, { query: Core.Structure.Query.nonHetPolymer(), name: 'Polymer', silent: true }, { isBinding: true })
-            polymer.then(CreateVisual, { style: Visualization.Molecule.Default.ForType.get('Cartoons') }, { ref: t.params.polymerRef });
+            g.then(CreateSelectionFromQuery, { query: Core.Structure.Query.nonHetPolymer(), name: 'Polymer', silent: true }, { isBinding: true })
+              .then(CreateVisual, { style: Visualization.Molecule.Default.ForType.get('Cartoons') }, { ref: t.params.polymerRef });
         }
 
         if (t.params.het) {
-            let het = g.then(CreateSelectionFromQuery, { query: Core.Structure.Query.hetGroups(), name: 'HET', silent: true }, { isBinding: true })
-            het.then(CreateVisual, { style: Visualization.Molecule.Default.ForType.get('BallsAndSticks') }, { ref: t.params.hetRef });
+            g.then(CreateSelectionFromQuery, { query: Core.Structure.Query.hetGroups(), name: 'HET', silent: true }, { isBinding: true })
+                .then(CreateVisual, { style: Visualization.Molecule.Default.ForType.get('BallsAndSticks') }, { ref: t.params.hetRef });
         }
 
         if (t.params.water) {
@@ -372,9 +372,41 @@ namespace LiteMol.Bootstrap.Entity.Transformer.Molecule {
                 theme: { template: Visualization.Molecule.Default.ElementSymbolThemeTemplate, colors: Visualization.Molecule.Default.ElementSymbolThemeTemplate.colors, transparency: { alpha: 0.25 } }
             }
 
-            let water = g.then(CreateSelectionFromQuery, { query: Core.Structure.Query.entities({ type: 'water' }), name: 'Water', silent: true }, { isBinding: true })
-            water.then(CreateVisual, { style }, { ref: t.params.waterRef });
+            g.then(CreateSelectionFromQuery, { query: Core.Structure.Query.entities({ type: 'water' }), name: 'Water', silent: true }, { isBinding: true })
+                .then(CreateVisual, { style }, { ref: t.params.waterRef });
         }
         return g;
+    });
+
+    export interface CreateLabelsParams {
+        style: Visualization.Labels.Style<Utils.Molecule.Labels3DOptions>
+    }
+
+    export const CreateLabels = Tree.Transformer.create<Entity.Molecule.Model | Entity.Molecule.Selection | Entity.Molecule.Visual, Entity.Visual.Labels, CreateLabelsParams>({
+        id: 'molecule-create-labels',
+        name: 'Labels',
+        description: 'Create a labels for a molecule or a selection.',
+        from: [Entity.Molecule.Model, Entity.Molecule.Selection, Entity.Molecule.Visual],
+        to: [Entity.Visual.Labels],
+        isUpdatable: true,
+        defaultParams: ctx => ({ style: Visualization.Labels.Default.MoleculeLabels }),
+        validateParams: p => !p.style ? ['Specify Style'] : void 0,
+        customController: (ctx, t, e) => new Components.Transform.MoleculeLabels(ctx, t, e) as Components.Transform.Controller<any>
+    }, (ctx, a, t) => {
+        let params = t.params;
+        return Visualization.Labels.createMoleculeLabels(a, t, params.style).setReportTime(false);
+    }, (ctx, b, t) => {
+        const oldParams = b.transform.params;
+        const newParams = t.params;
+
+        if (!Visualization.Labels.Style.moleculeHasOnlyThemeChanged(oldParams.style, newParams.style)) return void 0;
+
+        const model = b.props.model;
+        const a = Tree.Node.findClosestNodeOfType(b, [Entity.Molecule.Model, Entity.Molecule.Selection, Entity.Molecule.Visual]);
+        if (!a) return void 0;
+        const theme = newParams.style.theme.template.provider(a, Visualization.Theme.getProps(newParams.style.theme));
+        model.applyTheme(theme);
+        Entity.nodeUpdated(b);
+        return Task.resolve(t.transformer.info.name, 'Background', Tree.Node.Null);
     });
 }          

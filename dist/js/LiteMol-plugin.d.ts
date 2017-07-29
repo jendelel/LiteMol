@@ -1,74 +1,4 @@
 
-
-
-// Project: https://github.com/jakearchibald/ES6-Promise
-// Definitions by: François de Campredon <https://github.com/fdecampredon/>, vvakame <https://github.com/vvakame>
-// Definitions: https://github.com/DefinitelyTyped/DefinitelyTyped
-
-declare namespace __Promise {
-    interface Thenable<T> {
-        then<U>(onFulfilled?: (value: T) => U | Thenable<U>, onRejected?: (error: any) => U | Thenable<U>): Thenable<U>;
-        then<U>(onFulfilled?: (value: T) => U | Thenable<U>, onRejected?: (error: any) => void): Thenable<U>;
-        catch<U>(onRejected?: (error: any) => U | Thenable<U>): Thenable<U>;
-    }
-
-    class Promise<T> implements Thenable<T> {
-        /**
-         * If you call resolve in the body of the callback passed to the constructor,
-         * your promise is fulfilled with result object passed to resolve.
-         * If you call reject your promise is rejected with the object passed to reject.
-         * For consistency and debugging (eg stack traces), obj should be an instanceof Error.
-         * Any errors thrown in the constructor callback will be implicitly passed to reject().
-         */
-        constructor(callback: (resolve: (value?: T | Thenable<T>) => void, reject: (error?: any) => void) => void);
-
-        /**
-         * onFulfilled is called when/if "promise" resolves. onRejected is called when/if "promise" rejects.
-         * Both are optional, if either/both are omitted the next onFulfilled/onRejected in the chain is called.
-         * Both callbacks have a single parameter , the fulfillment value or rejection reason.
-         * "then" returns a new promise equivalent to the value you return from onFulfilled/onRejected after being passed through Promise.resolve.
-         * If an error is thrown in the callback, the returned promise rejects with that error.
-         *
-         * @param onFulfilled called when/if "promise" resolves
-         * @param onRejected called when/if "promise" rejects
-         */
-        then<U>(onFulfilled?: (value: T) => U | Thenable<U>, onRejected?: (error: any) => U | Thenable<U>): Promise<U>;
-        then<U>(onFulfilled?: (value: T) => U | Thenable<U>, onRejected?: (error: any) => void): Promise<U>;
-
-        /**
-         * Sugar for promise.then(undefined, onRejected)
-         *
-         * @param onRejected called when/if "promise" rejects
-         */
-        catch<U>(onRejected?: (error: any) => U | Thenable<U>): Promise<U>;
-    }
-
-    namespace Promise {
-        /**
-         * Make a new promise from the thenable.
-         * A thenable is promise-like in as far as it has a "then" method.
-         */
-        function resolve<T>(value?: T | Thenable<T>): Promise<T>;
-
-        /**
-         * Make a promise that rejects to obj. For consistency and debugging (eg stack traces), obj should be an instanceof Error
-         */
-        function reject(error: any): Promise<any>;
-        function reject<T>(error: T): Promise<T>;
-
-        /**
-         * Make a promise that fulfills when every item in the array fulfills, and rejects if (and when) any item rejects.
-         * the array passed to all can be a mixture of promise-like objects and other objects.
-         * The fulfillment value is an array (in order) of fulfillment values. The rejection value is the first rejection value.
-         */
-        function all<T>(promises: (T | Thenable<T>)[]): Promise<T[]>;
-
-        /**
-         * Make a Promise that fulfills when any item fulfills, and rejects if any item rejects.
-         */
-        function race<T>(promises: (T | Thenable<T>)[]): Promise<T>;
-    }
-}
 // DefinitelyTyped: partial
 
 // This file contains common part of defintions for rx.d.ts and rx.lite.d.ts
@@ -9895,12 +9825,21 @@ declare namespace LiteMolZlib {
 }
 // Type definitions for React v15.0
 // Project: http://facebook.github.io/react/
-// Definitions by: Asana <https://asana.com>, AssureSign <http://www.assuresign.com>, Microsoft <https://microsoft.com>, John Reilly <https://github.com/johnnyreilly/>, Benoit Benezech <https://github.com/bbenezech>, Patricio Zavolinsky <https://github.com/pzavolinsky>
+// Definitions by: Asana <https://asana.com>, AssureSign <http://www.assuresign.com>, Microsoft <https://microsoft.com>, John Reilly <https://github.com/johnnyreilly/>, Benoit Benezech <https://github.com/bbenezech>, Patricio Zavolinsky <https://github.com/pzavolinsky>, Digiguru <https://github.com/digiguru>, Eric Anderson <https://github.com/ericanderson>
 // Definitions: https://github.com/DefinitelyTyped/DefinitelyTyped
-// TypeScript Version: 2.1
+// TypeScript Version: 2.2
 
-//export = React;
-//export as namespace React;
+type NativeAnimationEvent = AnimationEvent;
+type NativeClipboardEvent = ClipboardEvent;
+type NativeCompositionEvent = CompositionEvent;
+type NativeDragEvent = DragEvent;
+type NativeFocusEvent = FocusEvent;
+type NativeKeyboardEvent = KeyboardEvent;
+type NativeMouseEvent = MouseEvent;
+type NativeTouchEvent = TouchEvent;
+type NativeTransitionEvent = TransitionEvent;
+type NativeUIEvent = UIEvent;
+type NativeWheelEvent = WheelEvent;
 
 declare namespace __LiteMolReact {
 
@@ -9908,7 +9847,8 @@ declare namespace __LiteMolReact {
     // React Elements
     // ----------------------------------------------------------------------
 
-    type ReactType = string | ComponentClass<any> | StatelessComponent<any>;
+    type ReactType = string | ComponentType<any>;
+    type ComponentType<P> = ComponentClass<P> | StatelessComponent<P>;
 
     type Key = string | number;
     type Ref<T> = string | ((instance: T) => any);
@@ -10061,12 +10001,13 @@ declare namespace __LiteMolReact {
     type ReactInstance = Component<any, any> | Element;
 
     // Base component for plain JS classes
-    class Component<P, S> implements ComponentLifecycle<P, S> {
+    interface Component<P, S> extends ComponentLifecycle<P, S> { }
+    class Component<P, S> {
         constructor(props?: P, context?: any);
         setState<K extends keyof S>(f: (prevState: S, props: P) => Pick<S, K>, callback?: () => any): void;
         setState<K extends keyof S>(state: Pick<S, K>, callback?: () => any): void;
         forceUpdate(callBack?: () => any): void;
-        render(): JSX.Element | null;
+        render(): JSX.Element | null | false;
 
         // React.Props<T> is now deprecated, which means that the `children`
         // property is not available on `P` by default, even though you can
@@ -10107,7 +10048,7 @@ declare namespace __LiteMolReact {
     }
 
     interface ComponentClass<P> {
-        new (props?: P, context?: any): Component<P, ComponentState>;
+        new(props?: P, context?: any): Component<P, ComponentState>;
         propTypes?: ValidationMap<P>;
         contextTypes?: ValidationMap<any>;
         childContextTypes?: ValidationMap<any>;
@@ -10116,7 +10057,7 @@ declare namespace __LiteMolReact {
     }
 
     interface ClassicComponentClass<P> extends ComponentClass<P> {
-        new (props?: P, context?: any): ClassicComponent<P, ComponentState>;
+        new(props?: P, context?: any): ClassicComponent<P, ComponentState>;
         getDefaultProps?(): P;
     }
 
@@ -10137,15 +10078,15 @@ declare namespace __LiteMolReact {
     interface ComponentLifecycle<P, S> {
         componentWillMount?(): void;
         componentDidMount?(): void;
-        componentWillReceiveProps?(nextProps: P, nextContext: any): void;
-        shouldComponentUpdate?(nextProps: P, nextState: S, nextContext: any): boolean;
-        componentWillUpdate?(nextProps: P, nextState: S, nextContext: any): void;
-        componentDidUpdate?(prevProps: P, prevState: S, prevContext: any): void;
+        componentWillReceiveProps?(nextProps: Readonly<P>, nextContext: any): void;
+        shouldComponentUpdate?(nextProps: Readonly<P>, nextState: Readonly<S>, nextContext: any): boolean;
+        componentWillUpdate?(nextProps: Readonly<P>, nextState: Readonly<S>, nextContext: any): void;
+        componentDidUpdate?(prevProps: Readonly<P>, prevState: Readonly<S>, prevContext: any): void;
         componentWillUnmount?(): void;
     }
 
     interface Mixin<P, S> extends ComponentLifecycle<P, S> {
-        mixins?: Mixin<P, S>;
+        mixins?: Mixin<P, S>[];
         statics?: {
             [key: string]: any;
         };
@@ -10184,23 +10125,27 @@ declare namespace __LiteMolReact {
         persist(): void;
         // If you thought this should be `EventTarget & T`, see https://github.com/DefinitelyTyped/DefinitelyTyped/pull/12239
         target: EventTarget;
-        timeStamp: Date;
+        timeStamp: number;
         type: string;
     }
 
     interface ClipboardEvent<T> extends SyntheticEvent<T> {
         clipboardData: DataTransfer;
+        nativeEvent: NativeClipboardEvent;
     }
 
     interface CompositionEvent<T> extends SyntheticEvent<T> {
         data: string;
+        nativeEvent: NativeCompositionEvent;
     }
 
     interface DragEvent<T> extends MouseEvent<T> {
         dataTransfer: DataTransfer;
+        nativeEvent: NativeDragEvent;
     }
 
     interface FocusEvent<T> extends SyntheticEvent<T> {
+        nativeEvent: NativeFocusEvent;
         relatedTarget: EventTarget;
     }
 
@@ -10221,6 +10166,7 @@ declare namespace __LiteMolReact {
         locale: string;
         location: number;
         metaKey: boolean;
+        nativeEvent: NativeKeyboardEvent;
         repeat: boolean;
         shiftKey: boolean;
         which: number;
@@ -10235,6 +10181,7 @@ declare namespace __LiteMolReact {
         ctrlKey: boolean;
         getModifierState(key: string): boolean;
         metaKey: boolean;
+        nativeEvent: NativeMouseEvent;
         pageX: number;
         pageY: number;
         relatedTarget: EventTarget;
@@ -10249,6 +10196,7 @@ declare namespace __LiteMolReact {
         ctrlKey: boolean;
         getModifierState(key: string): boolean;
         metaKey: boolean;
+        nativeEvent: NativeTouchEvent;
         shiftKey: boolean;
         targetTouches: TouchList;
         touches: TouchList;
@@ -10256,6 +10204,7 @@ declare namespace __LiteMolReact {
 
     interface UIEvent<T> extends SyntheticEvent<T> {
         detail: number;
+        nativeEvent: NativeUIEvent;
         view: AbstractView;
     }
 
@@ -10264,18 +10213,21 @@ declare namespace __LiteMolReact {
         deltaX: number;
         deltaY: number;
         deltaZ: number;
+        nativeEvent: NativeWheelEvent;
     }
 
     interface AnimationEvent<T> extends SyntheticEvent<T> {
         animationName: string;
-        pseudoElement: string;
         elapsedTime: number;
+        nativeEvent: NativeAnimationEvent;
+        pseudoElement: string;
     }
 
     interface TransitionEvent<T> extends SyntheticEvent<T> {
+        elapsedTime: number;
+        nativeEvent: NativeTransitionEvent;
         propertyName: string;
         pseudoElement: string;
-        elapsedTime: number;
     }
 
     //
@@ -10332,7 +10284,7 @@ declare namespace __LiteMolReact {
     interface ChangeTargetHTMLProps<T extends HTMLElement> extends ChangeTargetHTMLAttributes<T>, ClassAttributes<T> {
     }
 
-    interface SVGProps extends SVGAttributes<SVGElement>, ClassAttributes<SVGElement> {
+    interface SVGProps<T> extends SVGAttributes<T>, ClassAttributes<T> {
     }
 
     interface DOMAttributes<T> {
@@ -10522,17 +10474,17 @@ declare namespace __LiteMolReact {
         /**
          * Aligns a flex container's lines within the flex container when there is extra space in the cross-axis, similar to how justify-content aligns individual items within the main-axis.
          */
-        alignContent?: CSSWideKeyword | any;
+        alignContent?: CSSWideKeyword | "flex-start" | "flex-end" | "center" | "space-between" | "space-around" | "stretch";
 
         /**
          * Sets the default alignment in the cross axis for all of the flex container's items, including anonymous flex items, similarly to how justify-content aligns items along the main axis.
          */
-        alignItems?: CSSWideKeyword | any;
+        alignItems?: CSSWideKeyword | "flex-start" | "flex-end" | "center" | "baseline" | "stretch";
 
         /**
          * Allows the default alignment to be overridden for individual flex items.
          */
-        alignSelf?: CSSWideKeyword | any;
+        alignSelf?: CSSWideKeyword | "auto" | "flex-start" | "flex-end" | "center" | "baseline" | "stretch";
 
         /**
          * This property allows precise alignment of elements, such as graphics, that do not have a baseline-table or lack the desired baseline in their baseline-table. With the alignment-adjust property, the position of the baseline identified by the alignment-baseline can be explicitly determined. It also determines precisely the alignment point for each glyph within a textual element.
@@ -10838,6 +10790,12 @@ declare namespace __LiteMolReact {
         boxFlexGroup?: CSSWideKeyword | number;
 
         /**
+         * Cast a drop shadow from the frame of almost any element.
+         * MDN: https://developer.mozilla.org/en-US/docs/Web/CSS/box-shadow
+         */
+        boxShadow?: CSSWideKeyword | any;
+
+        /**
          * The CSS break-after property allows you to force a break on multi-column layouts. More specifically, it allows you to force a break after an element. It allows you to determine if a break should occur, and what type of break it should be. The break-after CSS property describes how the page, column or region break behaves after the generated box. If there is no generated box, the property is ignored.
          */
         breakAfter?: CSSWideKeyword | any;
@@ -10995,12 +10953,12 @@ declare namespace __LiteMolReact {
         /**
          * The flex-direction CSS property describes how flex items are placed in the flex container, by setting the direction of the flex container's main axis.
          */
-        flexDirection?: CSSWideKeyword | any;
+        flexDirection?: CSSWideKeyword | "row" | "row-reverse" | "column" | "column-reverse";
 
         /**
          * The flex-flow CSS property defines the flex container's main and cross axis. It is a shorthand property for the flex-direction and flex-wrap properties.
          */
-        flexFlow?: CSSWideKeyword | any;
+        flexFlow?: CSSWideKeyword | string;
 
         /**
          * Specifies the flex grow factor of a flex item.
@@ -11032,6 +10990,12 @@ declare namespace __LiteMolReact {
         flexShrink?: CSSWideKeyword | number;
 
         /**
+         * Specifies whether flex items are forced into a single line or can be wrapped onto multiple lines. If wrapping is allowed, this property also enables you to control the direction in which lines are stacked.
+         * See CSS flex-wrap property https://drafts.csswg.org/css-flexbox-1/#flex-wrap-property
+         */
+        flexWrap?: CSSWideKeyword | "nowrap" | "wrap" | "wrap-reverse";
+
+        /**
          * Elements which have the style float are floated horizontally. These elements can move as far to the left or right of the containing element. All elements after the floating element will flow around it, but elements before the floating element are not impacted. If several floating elements are placed after each other, they will float next to each other as long as there is room.
          */
         float?: CSSWideKeyword | any;
@@ -11061,9 +11025,9 @@ declare namespace __LiteMolReact {
          * See CSS 3 font-size property https://www.w3.org/TR/css-fonts-3/#propdef-font-size
          */
         fontSize?: CSSWideKeyword |
-                   "xx-small" | "x-small" | "small" | "medium" | "large" | "x-large" | "xx-large" |
-                   "larger" | "smaller" |
-                   CSSLength | CSSPercentage;
+        "xx-small" | "x-small" | "small" | "medium" | "large" | "x-large" | "xx-large" |
+        "larger" | "smaller" |
+        CSSLength | CSSPercentage;
 
         /**
          * The font-size-adjust property adjusts the font-size of the fallback fonts defined with font-family, so that the x-height is the same no matter what font is used. This preserves the readability of the text when fallback happens.
@@ -11076,8 +11040,8 @@ declare namespace __LiteMolReact {
          * See CSS 3 font-stretch property https://drafts.csswg.org/css-fonts-3/#propdef-font-stretch
          */
         fontStretch?: CSSWideKeyword |
-                      "normal" | "ultra-condensed" | "extra-condensed" | "condensed" | "semi-condensed" |
-                      "semi-expanded" | "expanded" | "extra-expanded" | "ultra-expanded";
+        "normal" | "ultra-condensed" | "extra-condensed" | "condensed" | "semi-condensed" |
+        "semi-expanded" | "expanded" | "extra-expanded" | "ultra-expanded";
 
         /**
          * The font-style property allows normal, italic, or oblique faces to be selected. Italic forms are generally cursive in nature while oblique faces are typically sloped versions of the regular face. Oblique faces can be simulated by artificially sloping the glyphs of the regular face.
@@ -11191,7 +11155,7 @@ declare namespace __LiteMolReact {
          * along the main-axis of their container.
          * See CSS justify-content property https://www.w3.org/TR/css-flexbox-1/#justify-content-property
          */
-        justifyContent?: CSSWideKeyword | "flex-start" | "flex-end" | "center" | "space-between" | "space-around";
+        justifyContent?: CSSWideKeyword | "flex-start" | "flex-end" | "center" | "space-between" | "space-around" | "space-evenly";
 
         layoutGrid?: CSSWideKeyword | any;
 
@@ -11387,7 +11351,7 @@ declare namespace __LiteMolReact {
         /**
          * The overflow property controls how extra content exceeding the bounding box of an element is rendered. It can be used in conjunction with an element that has a fixed width and height, to eliminate text-induced page distortion.
          */
-        overflow?: CSSWideKeyword | any;
+        overflow?: CSSWideKeyword | "auto" | "hidden" | "scroll" | "visible";
 
         /**
          * Specifies the preferred scrolling methods for elements that overflow.
@@ -11397,12 +11361,12 @@ declare namespace __LiteMolReact {
         /**
          * Controls how extra content exceeding the x-axis of the bounding box of an element is rendered.
          */
-        overflowX?: CSSWideKeyword | any;
+        overflowX?: CSSWideKeyword | "auto" | "hidden" | "scroll" | "visible";
 
         /**
          * Controls how extra content exceeding the y-axis of the bounding box of an element is rendered.
          */
-        overflowY?: CSSWideKeyword | any;
+        overflowY?: CSSWideKeyword | "auto" | "hidden" | "scroll" | "visible";
 
         /**
          * The padding optional CSS property sets the required padding space on one to four sides of an element. The padding area is the space between an element and its border. Negative values are not allowed but decimal values are permitted. The element size is treated as fixed, and the content of the element shifts toward the center as padding is increased.
@@ -11482,7 +11446,7 @@ declare namespace __LiteMolReact {
         /**
          * The position property controls the type of positioning used by an element within its parent elements. The effect of the position property depends on a lot of factors, for example the position property of parent elements.
          */
-        position?: CSSWideKeyword | any;
+        position?: CSSWideKeyword | "static" | "relative" | "absolute" | "fixed" | "sticky";
 
         /**
          * Obsolete: unsupported.
@@ -11937,6 +11901,7 @@ declare namespace __LiteMolReact {
         // React-specific Attributes
         defaultChecked?: boolean;
         defaultValue?: string | string[];
+        suppressContentEditableWarning?: boolean;
 
         // Standard HTML Attributes
         accept?: string;
@@ -11956,6 +11921,7 @@ declare namespace __LiteMolReact {
         charSet?: string;
         challenge?: string;
         checked?: boolean;
+        cite?: string;
         classID?: string;
         className?: string;
         cols?: number;
@@ -12041,6 +12007,7 @@ declare namespace __LiteMolReact {
         shape?: string;
         size?: number;
         sizes?: string;
+        slot?: string;
         span?: number;
         spellCheck?: boolean;
         src?: string;
@@ -12098,7 +12065,29 @@ declare namespace __LiteMolReact {
     //   - "number | string"
     //   - "string"
     //   - union of string literals
-    interface SVGAttributes<T> extends HTMLAttributes<T> {
+    interface SVGAttributes<T> extends DOMAttributes<T> {
+        // Attributes which also defined in HTMLAttributes
+        // See comment in SVGDOMPropertyConfig.js
+        className?: string;
+        color?: string;
+        height?: number | string;
+        id?: string;
+        lang?: string;
+        max?: number | string;
+        media?: string;
+        method?: string;
+        min?: number | string;
+        name?: string;
+        style?: CSSProperties;
+        target?: string;
+        type?: string;
+        width?: number | string;
+
+        // Other HTML properties supported by SVG elements in browsers
+        role?: string;
+        tabIndex?: number;
+
+        // SVG Specific attributes
         accentHeight?: number | string;
         accumulate?: "none" | "sum";
         additive?: "replace" | "sum";
@@ -12291,7 +12280,6 @@ declare namespace __LiteMolReact {
         textRendering?: number | string;
         to?: number | string;
         transform?: string;
-        type?: string;
         u1?: number | string;
         u2?: number | string;
         underlinePosition?: number | string;
@@ -12463,6 +12451,7 @@ declare namespace __LiteMolReact {
 
         // SVG
         svg: SVGFactory;
+        animate: SVGFactory;
         circle: SVGFactory;
         defs: SVGFactory;
         ellipse: SVGFactory;
@@ -12496,9 +12485,7 @@ declare namespace __LiteMolReact {
         isRequired: Validator<T>;
     }
 
-    interface ValidationMap<T> {
-        [key: string]: Validator<T>;
-    }
+    type ValidationMap<T> = {[K in keyof T]?: Validator<T> };
 
     interface ReactPropTypes {
         any: Requireable<any>;
@@ -12564,9 +12551,10 @@ declare namespace JSX {
 
     interface Element extends React.ReactElement<any> { }
     interface ElementClass extends React.Component<any, any> {
-        render(): JSX.Element | null;
+        render(): JSX.Element | null | false;
     }
     interface ElementAttributesProperty { props: {}; }
+    interface ElementChildrenAttribute { children: {}; }
 
     interface IntrinsicAttributes extends React.Attributes { }
     interface IntrinsicClassAttributes<T> extends React.ClassAttributes<T> { }
@@ -12689,124 +12677,124 @@ declare namespace JSX {
         wbr: React.HTMLProps<HTMLElement>;
 
         // SVG
-        svg: React.SVGProps;
+        svg: React.SVGProps<SVGSVGElement>;
 
-        circle: React.SVGProps;
-        clipPath: React.SVGProps;
-        defs: React.SVGProps;
-        desc: React.SVGProps;
-        ellipse: React.SVGProps;
-        feBlend: React.SVGProps;
-        feColorMatrix: React.SVGProps;
-        feComponentTransfer: React.SVGProps;
-        feComposite: React.SVGProps;
-        feConvolveMatrix: React.SVGProps;
-        feDiffuseLighting: React.SVGProps;
-        feDisplacementMap: React.SVGProps;
-        feDistantLight: React.SVGProps;
-        feFlood: React.SVGProps;
-        feFuncA: React.SVGProps;
-        feFuncB: React.SVGProps;
-        feFuncG: React.SVGProps;
-        feFuncR: React.SVGProps;
-        feGaussianBlur: React.SVGProps;
-        feImage: React.SVGProps;
-        feMerge: React.SVGProps;
-        feMergeNode: React.SVGProps;
-        feMorphology: React.SVGProps;
-        feOffset: React.SVGProps;
-        fePointLight: React.SVGProps;
-        feSpecularLighting: React.SVGProps;
-        feSpotLight: React.SVGProps;
-        feTile: React.SVGProps;
-        feTurbulence: React.SVGProps;
-        filter: React.SVGProps;
-        foreignObject: React.SVGProps;
-        g: React.SVGProps;
-        image: React.SVGProps;
-        line: React.SVGProps;
-        linearGradient: React.SVGProps;
-        marker: React.SVGProps;
-        mask: React.SVGProps;
-        metadata: React.SVGProps;
-        path: React.SVGProps;
-        pattern: React.SVGProps;
-        polygon: React.SVGProps;
-        polyline: React.SVGProps;
-        radialGradient: React.SVGProps;
-        rect: React.SVGProps;
-        stop: React.SVGProps;
-        switch: React.SVGProps;
-        symbol: React.SVGProps;
-        text: React.SVGProps;
-        textPath: React.SVGProps;
-        tspan: React.SVGProps;
-        use: React.SVGProps;
-        view: React.SVGProps;
+        animate: React.SVGProps<SVGElement>; // TODO: It is SVGAnimateElement but is not in TypeScript's lib.dom.d.ts for now.
+        circle: React.SVGProps<SVGCircleElement>;
+        clipPath: React.SVGProps<SVGClipPathElement>;
+        defs: React.SVGProps<SVGDefsElement>;
+        desc: React.SVGProps<SVGDescElement>;
+        ellipse: React.SVGProps<SVGEllipseElement>;
+        feBlend: React.SVGProps<SVGFEBlendElement>;
+        feColorMatrix: React.SVGProps<SVGFEColorMatrixElement>;
+        feComponentTransfer: React.SVGProps<SVGFEComponentTransferElement>;
+        feComposite: React.SVGProps<SVGFECompositeElement>;
+        feConvolveMatrix: React.SVGProps<SVGFEConvolveMatrixElement>;
+        feDiffuseLighting: React.SVGProps<SVGFEDiffuseLightingElement>;
+        feDisplacementMap: React.SVGProps<SVGFEDisplacementMapElement>;
+        feDistantLight: React.SVGProps<SVGFEDistantLightElement>;
+        feFlood: React.SVGProps<SVGFEFloodElement>;
+        feFuncA: React.SVGProps<SVGFEFuncAElement>;
+        feFuncB: React.SVGProps<SVGFEFuncBElement>;
+        feFuncG: React.SVGProps<SVGFEFuncGElement>;
+        feFuncR: React.SVGProps<SVGFEFuncRElement>;
+        feGaussianBlur: React.SVGProps<SVGFEGaussianBlurElement>;
+        feImage: React.SVGProps<SVGFEImageElement>;
+        feMerge: React.SVGProps<SVGFEMergeElement>;
+        feMergeNode: React.SVGProps<SVGFEMergeNodeElement>;
+        feMorphology: React.SVGProps<SVGFEMorphologyElement>;
+        feOffset: React.SVGProps<SVGFEOffsetElement>;
+        fePointLight: React.SVGProps<SVGFEPointLightElement>;
+        feSpecularLighting: React.SVGProps<SVGFESpecularLightingElement>;
+        feSpotLight: React.SVGProps<SVGFESpotLightElement>;
+        feTile: React.SVGProps<SVGFETileElement>;
+        feTurbulence: React.SVGProps<SVGFETurbulenceElement>;
+        filter: React.SVGProps<SVGFilterElement>;
+        foreignObject: React.SVGProps<SVGForeignObjectElement>;
+        g: React.SVGProps<SVGGElement>;
+        image: React.SVGProps<SVGImageElement>;
+        line: React.SVGProps<SVGLineElement>;
+        linearGradient: React.SVGProps<SVGLinearGradientElement>;
+        marker: React.SVGProps<SVGMarkerElement>;
+        mask: React.SVGProps<SVGMaskElement>;
+        metadata: React.SVGProps<SVGMetadataElement>;
+        path: React.SVGProps<SVGPathElement>;
+        pattern: React.SVGProps<SVGPatternElement>;
+        polygon: React.SVGProps<SVGPolygonElement>;
+        polyline: React.SVGProps<SVGPolylineElement>;
+        radialGradient: React.SVGProps<SVGRadialGradientElement>;
+        rect: React.SVGProps<SVGRectElement>;
+        stop: React.SVGProps<SVGStopElement>;
+        switch: React.SVGProps<SVGSwitchElement>;
+        symbol: React.SVGProps<SVGSymbolElement>;
+        text: React.SVGProps<SVGTextElement>;
+        textPath: React.SVGProps<SVGTextPathElement>;
+        tspan: React.SVGProps<SVGTSpanElement>;
+        use: React.SVGProps<SVGUseElement>;
+        view: React.SVGProps<SVGViewElement>;
     }
 }
-// Type definitions for React v0.14 (react-dom)
+
+// Type definitions for React (react-dom) 15.5
 // Project: http://facebook.github.io/react/
-// Definitions by: Asana <https://asana.com>, AssureSign <http://www.assuresign.com>, Microsoft <https://microsoft.com>
+// Definitions by: Asana <https://asana.com>, AssureSign <http://www.assuresign.com>, Microsoft <https://microsoft.com>, MartynasZilinskas <https://github.com/MartynasZilinskas>
 // Definitions: https://github.com/DefinitelyTyped/DefinitelyTyped
+// TypeScript Version: 2.1
 
-declare namespace __LiteMolReact {
-    namespace __DOM {
-        function findDOMNode<E extends Element>(instance: ReactInstance): E;
-        function findDOMNode(instance: ReactInstance): Element;
+declare namespace __LiteMolReactDOM {
+    export function findDOMNode<E extends Element>(instance: __LiteMolReact.ReactInstance): E;
+    export function findDOMNode(instance: __LiteMolReact.ReactInstance): Element;
 
-        function render<P extends DOMAttributes<T>, T extends Element>(
-            element: DOMElement<P, T>,
-            container: Element,
-            callback?: (element: T) => any): T;
-        function render<P>(
-            element: SFCElement<P>,
-            container: Element,
-            callback?: () => any): void;
-        function render<P, T extends Component<P, {}>>(
-            element: CElement<P, T>,
-            container: Element,
-            callback?: (component: T) => any): T;
-        function render<P>(
-            element: ReactElement<P>,
-            container: Element,
-            callback?: (component?: Component<P, {}> | Element) => any): Component<P, {}> | Element | void;
+    export function render<P extends __LiteMolReact.DOMAttributes<T>, T extends Element>(
+        element: __LiteMolReact.DOMElement<P, T>,
+        container: Element | null,
+        callback?: (element: T) => any
+    ): T;
+    export function render<P>(
+        element: __LiteMolReact.SFCElement<P>,
+        container: Element | null,
+        callback?: () => any
+    ): void;
+    export function render<P, T extends __LiteMolReact.Component<P, __LiteMolReact.ComponentState>>(
+        element: __LiteMolReact.CElement<P, T>,
+        container: Element | null,
+        callback?: (component: T) => any
+    ): T;
+    export function render<P>(
+        element: __LiteMolReact.ReactElement<P>,
+        container: Element | null,
+        callback?: (component?: __LiteMolReact.Component<P, __LiteMolReact.ComponentState> | Element) => any
+    ): __LiteMolReact.Component<P, __LiteMolReact.ComponentState> | Element | void;
+    export function render<P>(
+        parentComponent: __LiteMolReact.Component<any, any>,
+        element: __LiteMolReact.SFCElement<P>,
+        container: Element,
+        callback?: () => any
+    ): void;
 
-        function unmountComponentAtNode(container: Element): boolean;
+    export function unmountComponentAtNode(container: Element): boolean;
 
-        var version: string;
+    export const version: string;
 
-        function unstable_batchedUpdates<A, B>(callback: (a: A, b: B) => any, a: A, b: B): void;
-        function unstable_batchedUpdates<A>(callback: (a: A) => any, a: A): void;
-        function unstable_batchedUpdates(callback: () => any): void;
+    export function unstable_batchedUpdates<A, B>(callback: (a: A, b: B) => any, a: A, b: B): void;
+    export function unstable_batchedUpdates<A>(callback: (a: A) => any, a: A): void;
+    export function unstable_batchedUpdates(callback: () => any): void;
 
-        function unstable_renderSubtreeIntoContainer<P extends DOMAttributes<T>, T extends Element>(
-            parentComponent: Component<any, any>,
-            element: DOMElement<P, T>,
-            container: Element,
-            callback?: (element: T) => any): T;
-        function unstable_renderSubtreeIntoContainer<P, T extends Component<P, {}>>(
-            parentComponent: Component<any, any>,
-            element: CElement<P, T>,
-            container: Element,
-            callback?: (component: T) => any): T;
-        function render<P>(
-            parentComponent: Component<any, any>,
-            element: SFCElement<P>,
-            container: Element,
-            callback?: () => any): void;
-        function unstable_renderSubtreeIntoContainer<P>(
-            parentComponent: Component<any, any>,
-            element: ReactElement<P>,
-            container: Element,
-            callback?: (component?: Component<P, {}> | Element) => any): Component<P, {}> | Element | void;
-    }
-
-    namespace __DOMServer {
-        function renderToString(element: ReactElement<any>): string;
-        function renderToStaticMarkup(element: ReactElement<any>): string;
-        var version: string;
-    }
+    export function unstable_renderSubtreeIntoContainer<P extends __LiteMolReact.DOMAttributes<T>, T extends Element>(
+        parentComponent: __LiteMolReact.Component<any, any>,
+        element: __LiteMolReact.DOMElement<P, T>,
+        container: Element,
+        callback?: (element: T) => any): T;
+    export function unstable_renderSubtreeIntoContainer<P, T extends __LiteMolReact.Component<P, __LiteMolReact.ComponentState>>(
+        parentComponent: __LiteMolReact.Component<any, any>,
+        element: __LiteMolReact.CElement<P, T>,
+        container: Element,
+        callback?: (component: T) => any): T;
+    export function unstable_renderSubtreeIntoContainer<P>(
+        parentComponent: __LiteMolReact.Component<any, any>,
+        element: __LiteMolReact.ReactElement<P>,
+        container: Element,
+        callback?: (component?: __LiteMolReact.Component<P, __LiteMolReact.ComponentState> | Element) => any): __LiteMolReact.Component<P, __LiteMolReact.ComponentState> | Element | void;
 }
 
 declare namespace __LiteMolColorPicker {
@@ -12853,8 +12841,7 @@ declare namespace __LiteMolColorPicker {
     // }
 }
 declare namespace LiteMol {
-    type Promise<T> = __Promise.Promise<T>;
-    const Promise: typeof __Promise.Promise;
+    const Promise: PromiseConstructor;
 }
 declare namespace LiteMol.Core {
     export import Rx = __LiteMolRx;
@@ -12873,11 +12860,12 @@ declare namespace LiteMol.Core {
     function computation<A>(c: (ctx: Computation.Context) => Promise<A>): Computation<A>;
     class Computation<A> {
         private computation;
-        run(ctx?: Computation.Context): __Promise.Promise<A>;
+        run(ctx?: Computation.Context): Promise<A>;
         runWithContext(ctx?: Computation.Context): Computation.Running<A>;
         constructor(computation: (ctx: Computation.Context) => Promise<A>);
     }
     module Computation {
+        let PRINT_CONSOLE_ERROR: boolean;
         function resolve<A>(a: A): Computation<A>;
         function reject<A>(reason: any): Computation<A>;
         function createContext(): Computation.Context;
@@ -12897,7 +12885,7 @@ declare namespace LiteMol.Core {
              * Checks if the computation was aborted. If so, throws.
              * Otherwise, updates the progress.
              */
-            updateProgress(msg: string, abort?: boolean | (() => void), current?: number, max?: number): void;
+            updateProgress(msg: string, abort?: boolean | (() => void), current?: number, max?: number): Promise<void>;
         }
         interface Running<A> {
             progress: Rx.Observable<Progress>;
@@ -12955,7 +12943,7 @@ declare namespace LiteMol.Core.Utils {
         /**
          * Create a map from an array of the form [[key, value], ...]
          */
-        function ofArray<K extends string | number, V>(data: (K | V)[][]): FastMap<K, V>;
+        function ofArray<K extends string | number, V>(data: [K, V][]): FastMap<K, V>;
         /**
          * Create a map from an object of the form { key: value, ... }
          */
@@ -12972,6 +12960,18 @@ declare namespace LiteMol.Core.Utils {
          * Create a set of an "array like" sequence.
          */
         function ofArray<T extends string | number>(xs: ArrayLike<T>): FastSet<T>;
+    }
+    /**
+     * An optimized set-like structure.
+     */
+    interface Mask {
+        size: number;
+        has(i: number): boolean;
+    }
+    namespace Mask {
+        function ofStructure(structure: Structure.Molecule.Model): Mask;
+        function ofIndices(totalCount: number, indices: number[]): Mask;
+        function ofFragments(seq: Structure.Query.FragmentSeq): Mask;
     }
 }
 declare namespace LiteMol.Core.Utils {
@@ -13013,6 +13013,7 @@ declare namespace LiteMol.Core.Utils {
             count: number;
             columns: ColumnDescriptor<Schema>[];
             addColumn<T>(name: keyof Schema, creator: (size: number) => T): T;
+            addRawColumn<T>(name: keyof Schema, creator: (size: number) => T, data: T): T;
             getRawData(): any[][];
             /**
              * This functions clones the table and defines all its column inside the constructor, hopefully making the JS engine
@@ -13086,6 +13087,14 @@ declare namespace LiteMol.Core.Utils {
         function forFloat32(count: number): ArrayBuilder<number>;
         function forArray<T>(count: number): ArrayBuilder<T>;
         function create<T>(creator: (size: number) => any, chunkElementCount: number, elementSize: number): ArrayBuilder<T>;
+    }
+    interface UniqueArray<T extends number | string> {
+        _set: FastSet<T>;
+        array: T[];
+    }
+    function UniqueArray<T extends number | string>(): UniqueArray<T>;
+    namespace UniqueArray {
+        function add<T extends number | string>({_set, array}: UniqueArray<T>, e: T): void;
     }
 }
 declare namespace LiteMol.Core.Utils {
@@ -13162,6 +13171,7 @@ declare namespace LiteMol.Core.Formats {
     }
 }
 declare namespace LiteMol.Core.Formats.Molecule.mmCIF {
+    type StructConnType = 'covale' | 'covale_base' | 'covale_phosphate' | 'covale_sugar' | 'disulf' | 'hydrog' | 'metalc' | 'mismat' | 'modres' | 'saltbr';
     function ofDataBlock(data: CIF.DataBlock): Structure.Molecule;
 }
 declare namespace LiteMol.Core.Formats.Molecule.PDB {
@@ -13328,44 +13338,70 @@ declare namespace LiteMol.Core.Formats.Density {
     }
 }
 declare namespace LiteMol.Core.Geometry.LinearAlgebra {
-    type ObjectVec3 = {
-        x: number;
-        y: number;
-        z: number;
-    };
+    type Matrix4 = number[];
+    type Vector3 = number[];
+    type Vector4 = number[];
+    function Matrix4(): number[];
     /**
      * Stores a 4x4 matrix in a column major (j * 4 + i indexing) format.
      */
     namespace Matrix4 {
-        function empty(): number[];
+        function zero(): number[];
         function identity(): number[];
+        function fromIdentity(mat: number[]): number[];
         function ofRows(rows: number[][]): number[];
         function areEqual(a: number[], b: number[], eps: number): boolean;
         function setValue(a: number[], i: number, j: number, value: number): void;
-        function copy(out: number[], a: any): number[];
+        function copy(out: number[], a: number[]): number[];
         function clone(a: number[]): number[];
         function invert(out: number[], a: number[]): number[] | null;
         function mul(out: number[], a: number[], b: number[]): number[];
+        function mul3(out: number[], a: number[], b: number[], c: number[]): number[];
         function translate(out: number[], a: number[], v: number[]): number[];
         function fromTranslation(out: number[], v: number[]): number[];
-        function transformVector3(out: {
+        function rotate(out: number[], a: number[], rad: number, axis: number[]): number[] | null;
+        function fromRotation(out: number[], rad: number, axis: number[]): number[];
+        function scale(out: number[], a: number[], v: number[]): number[];
+        function fromScaling(out: number[], v: number[]): number[];
+        function makeTable(m: number[]): string;
+        function determinant(a: number[]): number;
+    }
+    function Vector3(x?: number, y?: number, z?: number): number[];
+    namespace Vector3 {
+        function zero(): number[];
+        function clone(a: number[]): number[];
+        function fromObj(v: {
             x: number;
             y: number;
             z: number;
-        }, a: {
-            x: number;
-            y: number;
-            z: number;
-        }, m: number[]): {
+        }): number[];
+        function toObj(v: number[]): {
             x: number;
             y: number;
             z: number;
         };
-        function makeTable(m: number[]): string;
-        function determinant(a: number[]): number;
+        function fromValues(x: number, y: number, z: number): number[];
+        function set(out: number[], x: number, y: number, z: number): number[];
+        function copy(out: number[], a: number[]): number[];
+        function add(out: number[], a: number[], b: number[]): number[];
+        function sub(out: number[], a: number[], b: number[]): number[];
+        function scale(out: number[], a: number[], b: number): number[];
+        function scaleAndAdd(out: number[], a: number[], b: number[], scale: number): number[];
+        function distance(a: number[], b: number[]): number;
+        function squaredDistance(a: number[], b: number[]): number;
+        function magnitude(a: number[]): number;
+        function squaredMagnitude(a: number[]): number;
+        function normalize(out: number[], a: number[]): number[];
+        function dot(a: number[], b: number[]): number;
+        function cross(out: number[], a: number[], b: number[]): number[];
+        function lerp(out: number[], a: number[], b: number[], t: number): number[];
+        function transformMat4(out: number[], a: number[], m: number[]): number[];
+        function angle(a: number[], b: number[]): number;
+        function makeRotation(mat: Matrix4, a: Vector3, b: Vector3): Matrix4;
     }
+    function Vector4(x?: number, y?: number, z?: number, w?: number): number[];
     namespace Vector4 {
-        function create(): number[];
+        function zero(): number[];
         function clone(a: number[]): number[];
         function fromValues(x: number, y: number, z: number, w: number): number[];
         function set(out: number[], x: number, y: number, z: number, w: number): number[];
@@ -13374,90 +13410,6 @@ declare namespace LiteMol.Core.Geometry.LinearAlgebra {
         function norm(a: number[]): number;
         function squaredNorm(a: number[]): number;
         function transform(out: number[], a: number[], m: number[]): number[];
-    }
-}
-declare namespace LiteMol.Core.Geometry {
-    /**
-     * Basic shape of the result buffer for range queries.
-     */
-    interface SubdivisionTree3DResultBuffer {
-        count: number;
-        indices: number[];
-        hasPriorities: boolean;
-        priorities: number[] | undefined;
-        add(distSq: number, index: number): void;
-        reset(): void;
-    }
-    /**
-     * A buffer that only remembers the values.
-     */
-    namespace SubdivisionTree3DResultIndexBuffer {
-        function create(initialCapacity: number): SubdivisionTree3DResultBuffer;
-    }
-    /**
-     * A buffer that remembers values and priorities.
-     */
-    namespace SubdivisionTree3DResultPriorityBuffer {
-        function create(initialCapacity: number): SubdivisionTree3DResultBuffer;
-    }
-    /**
-     * Query context. Handles the actual querying.
-     */
-    interface SubdivisionTree3DQueryContext<T> {
-        tree: SubdivisionTree3D<T>;
-        pivot: number[];
-        radius: number;
-        radiusSq: number;
-        indices: number[];
-        positions: number[];
-        buffer: SubdivisionTree3DResultBuffer;
-        nearest(x: number, y: number, z: number, radius: number): void;
-    }
-    namespace SubdivisionTree3DQueryContext {
-        function create<T>(tree: SubdivisionTree3D<T>, buffer: SubdivisionTree3DResultBuffer): SubdivisionTree3DQueryContext<T>;
-    }
-    /**
-     * A kd-like tree to query 3D data.
-     */
-    interface SubdivisionTree3D<T> {
-        data: T[];
-        indices: number[];
-        positions: number[];
-        root: SubdivisionTree3DNode;
-    }
-    namespace SubdivisionTree3D {
-        /**
-         * Create a context used for querying the data.
-         */
-        function createContextRadius<T>(tree: SubdivisionTree3D<T>, radiusEstimate: number, includePriorities?: boolean): SubdivisionTree3DQueryContext<T>;
-        /**
-         * Takes data and a function that calls SubdivisionTree3DPositionBuilder.add(x, y, z) on each data element.
-         */
-        function create<T>(data: T[], f: (e: T, add: (x: number, y: number, z: number) => void) => void, leafSize?: number): SubdivisionTree3D<T>;
-    }
-    /**
-     * A tree node.
-     */
-    interface SubdivisionTree3DNode {
-        splitValue: number;
-        startIndex: number;
-        endIndex: number;
-        left: SubdivisionTree3DNode;
-        right: SubdivisionTree3DNode;
-    }
-    namespace SubdivisionTree3DNode {
-        function nearest<T>(node: SubdivisionTree3DNode, ctx: SubdivisionTree3DQueryContext<T>, dim: number): void;
-        function create(splitValue: number, startIndex: number, endIndex: number, left: SubdivisionTree3DNode, right: SubdivisionTree3DNode): SubdivisionTree3DNode;
-    }
-    /**
-     * A helper to store boundary box.
-     */
-    interface Box3D {
-        min: number[];
-        max: number[];
-    }
-    namespace Box3D {
-        function createInfinite(): Box3D;
     }
 }
 declare namespace LiteMol.Core.Geometry {
@@ -13492,7 +13444,7 @@ declare namespace LiteMol.Core.Geometry {
          * Bounding sphere.
          */
         boundingSphere?: {
-            center: Geometry.LinearAlgebra.ObjectVec3;
+            center: Geometry.LinearAlgebra.Vector3;
             radius: number;
         };
     }
@@ -13504,6 +13456,65 @@ declare namespace LiteMol.Core.Geometry {
         function transformImmediate(surface: Surface, t: number[]): void;
         function transform(surface: Surface, t: number[]): Computation<Surface>;
     }
+}
+declare namespace LiteMol.Core.Geometry.Query3D {
+    /**
+     * Query context. Handles the actual querying.
+     */
+    type QueryFunc<T> = (x: number, y: number, z: number, radius: number) => Result<T>;
+    interface Result<T> {
+        readonly count: number;
+        readonly elements: T[];
+        readonly squaredDistances: number[];
+    }
+    interface InputData<T> {
+        elements: T[];
+        indices: Int32Array;
+        bounds: Box3D;
+        positions: number[];
+    }
+    type LookupStructure<T> = () => QueryFunc<T>;
+    /**
+     * A helper to store boundary box.
+     */
+    interface Box3D {
+        min: number[];
+        max: number[];
+    }
+    namespace Box3D {
+        function createInfinite(): Box3D;
+    }
+    /**
+    * Query context. Handles the actual querying.
+    */
+    interface QueryContext<T> {
+        structure: T;
+        pivot: number[];
+        radius: number;
+        radiusSq: number;
+        buffer: QueryContext.Buffer;
+    }
+    namespace QueryContext {
+        interface Buffer {
+            sourceElements: any[];
+            count: number;
+            elements: any[];
+            squaredDistances: number[];
+        }
+        function add<T>(ctx: QueryContext<T>, distSq: number, index: number): void;
+        /**
+         * Query the tree and store the result to this.buffer. Overwrites the old result.
+         */
+        function update<T>(ctx: QueryContext<T>, x: number, y: number, z: number, radius: number): void;
+        function create<T>(structure: T, sourceElements: any[]): QueryContext<T>;
+    }
+    function createInputData<T>(elements: T[], f: (e: T, add: (x: number, y: number, z: number) => void) => void): InputData<T>;
+}
+declare namespace LiteMol.Core.Geometry.Query3D {
+    function createSubdivisionTree<T>(data: InputData<T>, leafSize?: number): LookupStructure<T>;
+}
+declare namespace LiteMol.Core.Geometry.Query3D {
+    function createSpatialHash<T>(data: InputData<T>): LookupStructure<T>;
 }
 declare namespace LiteMol.Core.Geometry.MarchingCubes {
     /**
@@ -13560,8 +13571,8 @@ declare namespace LiteMol.Core.Geometry.MolecularSurface {
     }
     interface MolecularIsoField {
         data: Geometry.MarchingCubes.MarchingCubesParameters;
-        bottomLeft: Geometry.LinearAlgebra.ObjectVec3;
-        topRight: Geometry.LinearAlgebra.ObjectVec3;
+        bottomLeft: Geometry.LinearAlgebra.Vector3;
+        topRight: Geometry.LinearAlgebra.Vector3;
         transform: number[];
         inputParameters: MolecularSurfaceInputParameters;
         parameters: MolecularIsoSurfaceParameters;
@@ -13642,25 +13653,19 @@ declare namespace LiteMol.Core.Structure {
     interface Bond {
         atomAIndex: number;
         atomBIndex: number;
-        type: Bond.Type;
+        type: BondType;
     }
-    namespace Bond {
-        const enum Type {
-            Unknown = 0,
-            Single = 1,
-            Double = 2,
-            Triple = 3,
-            Aromatic = 4,
-            Metallic = 5,
-            Ion = 6,
-            Hydrogen = 7,
-            DisulfideBridge = 8,
-        }
+    interface ModifiedResidue {
+        asymId: string;
+        seqNumber: number;
+        insCode: string | null;
+        parent: string;
+        details: string | null;
     }
     class ComponentBondInfoEntry {
         id: string;
-        map: Utils.FastMap<string, Utils.FastMap<string, Bond.Type>>;
-        add(a: string, b: string, order: Bond.Type, swap?: boolean): void;
+        map: Utils.FastMap<string, Utils.FastMap<string, BondType>>;
+        add(a: string, b: string, order: BondType, swap?: boolean): void;
         constructor(id: string);
     }
     class ComponentBondInfo {
@@ -13706,6 +13711,32 @@ declare namespace LiteMol.Core.Structure {
         constructor(spacegroupName: string, cellSize: number[], cellAngles: number[], toFracTransform: number[], isNonStandardCrytalFrame: boolean);
     }
     /**
+     * Wraps _struct_conn mmCIF category.
+     */
+    class StructConn {
+        entries: StructConn.Entry[];
+        private _residuePairIndex;
+        private _atomIndex;
+        private static _resKey(rA, rB);
+        private getResiduePairIndex();
+        private getAtomIndex();
+        private static _emptyEntry;
+        getResidueEntries(residueAIndex: number, residueBIndex: number): ReadonlyArray<StructConn.Entry>;
+        getAtomEntries(atomIndex: number): ReadonlyArray<StructConn.Entry>;
+        constructor(entries: StructConn.Entry[]);
+    }
+    namespace StructConn {
+        interface Entry {
+            distance: number;
+            bondType: BondType;
+            partners: {
+                residueIndex: number;
+                atomIndex: number;
+                symmetry: string;
+            }[];
+        }
+    }
+    /**
      * Wraps an assembly operator.
      */
     class AssemblyOperator {
@@ -13748,6 +13779,7 @@ declare namespace LiteMol.Core.Structure {
     type ChainTable = DataTable<Chain>;
     type EntityTable = DataTable<Entity>;
     type BondTable = DataTable<Bond>;
+    type ModifiedResidueTable = DataTable<ModifiedResidue>;
     /**
      * Default Builders
      */
@@ -13758,12 +13790,13 @@ declare namespace LiteMol.Core.Structure {
         const Chains: DataTable.Definition<Chain>;
         const Entities: DataTable.Definition<Entity>;
         const Bonds: DataTable.Definition<Bond>;
+        const ModifiedResidues: DataTable.Definition<ModifiedResidue>;
     }
     class Operator {
         matrix: number[];
         id: string;
         isIdentity: boolean;
-        apply(v: Geometry.LinearAlgebra.ObjectVec3): void;
+        apply(v: Geometry.LinearAlgebra.Vector3): void;
         static applyToModelUnsafe(matrix: number[], m: Molecule.Model): void;
         constructor(matrix: number[], id: string, isIdentity: boolean);
     }
@@ -13778,9 +13811,8 @@ declare namespace LiteMol.Core.Structure {
             experimentMethod?: string;
         }
         interface Bonds {
-            covalent?: BondTable;
-            nonCovalent?: BondTable;
-            computed?: BondTable;
+            readonly structConn?: StructConn;
+            readonly input?: BondTable;
             readonly component?: ComponentBondInfo;
         }
         interface Model extends Model.Base {
@@ -13808,12 +13840,32 @@ declare namespace LiteMol.Core.Structure {
                 readonly entities: EntityTable;
                 readonly bonds: Bonds;
                 readonly secondaryStructure: SecondaryStructureElement[];
+                readonly modifiedResidues?: ModifiedResidueTable;
                 readonly symmetryInfo?: SymmetryInfo;
                 readonly assemblyInfo?: AssemblyInfo;
             }
-            function withTransformedXYZ<T>(model: Model, ctx: T, transform: (ctx: T, x: number, y: number, z: number, out: Geometry.LinearAlgebra.ObjectVec3) => void): Model;
+            function withTransformedXYZ<T>(model: Model, ctx: T, transform: (ctx: T, x: number, y: number, z: number, out: Geometry.LinearAlgebra.Vector3) => void): Model;
         }
     }
+}
+declare namespace LiteMol.Core.Structure {
+    const enum BondType {
+        Unknown = 0,
+        Single = 1,
+        Double = 2,
+        Triple = 3,
+        Aromatic = 4,
+        DisulfideBridge = 5,
+        Metallic = 6,
+        Ion = 7,
+        Hydrogen = 8,
+    }
+    function isBondTypeCovalent(t: BondType): boolean;
+    interface BondComputationParameters {
+        maxHbondLength: number;
+        forceCompute: boolean;
+    }
+    function computeBonds(model: Molecule.Model, atomIndices: number[], params?: Partial<BondComputationParameters>): Utils.DataTable<Bond>;
 }
 declare namespace LiteMol.Core.Structure {
     class Spacegroup {
@@ -13861,8 +13913,8 @@ declare namespace LiteMol.Core.Structure {
          *
          */
         class Context {
-            private mask;
-            private lazyTree;
+            readonly mask: Utils.Mask;
+            private lazyLoopup3d;
             /**
              * Number of atoms in the current context.
              */
@@ -13876,9 +13928,9 @@ declare namespace LiteMol.Core.Structure {
              */
             structure: Molecule.Model;
             /**
-             * Get a kd-tree for the atoms in the current context.
+             * Get a 3d loopup structure for the atoms in the current context.
              */
-            readonly tree: Geometry.SubdivisionTree3D<number>;
+            readonly lookup3d: Geometry.Query3D.LookupStructure<number>;
             /**
              * Checks if an atom is included in the current context.
              */
@@ -13899,22 +13951,8 @@ declare namespace LiteMol.Core.Structure {
              * Create a new context from a sequence of fragments.
              */
             static ofAtomIndices(structure: Molecule.Model, atomIndices: number[]): Context;
-            constructor(structure: Molecule.Model, mask: Context.Mask);
-            private makeTree();
-        }
-        namespace Context {
-            /**
-             * Represents the atoms in the context.
-             */
-            interface Mask {
-                size: number;
-                has(i: number): boolean;
-            }
-            module Mask {
-                function ofStructure(structure: Molecule.Model): Mask;
-                function ofIndices(structure: Molecule.Model, atomIndices: number[]): Mask;
-                function ofFragments(seq: FragmentSeq): Mask;
-            }
+            constructor(structure: Molecule.Model, mask: Utils.Mask);
+            private makeLookup3d();
         }
         /**
          * The basic element of the query language.
@@ -13992,7 +14030,7 @@ declare namespace LiteMol.Core.Structure {
              * Assumes the set is in the given context's mask.
              * Assumes the array is sorted.
              */
-            static ofArray(context: Context, tag: number, atomIndices: Int32Array): Fragment;
+            static ofArray(context: Context, tag: number, atomIndices: Int32Array | number[]): Fragment;
             /**
              * Create a fragment from a single index.
              * Assumes the index is in the given context's mask.
@@ -14059,6 +14097,7 @@ declare namespace LiteMol.Core.Structure.Query {
         inside(where: Source): Builder;
         intersectWith(where: Source): Builder;
         flatten(selector: (f: Fragment) => FragmentSeq): Builder;
+        except(toRemove: Source): Builder;
     }
     namespace Builder {
         const BuilderPrototype: any;
@@ -14082,6 +14121,7 @@ declare namespace LiteMol.Core.Structure.Query {
         authSeqNumber?: number;
         insCode?: string | null;
     }
+    function allAtoms(): Builder;
     function atomsByElement(...elements: string[]): Builder;
     function atomsByName(...names: string[]): Builder;
     function atomsById(...ids: number[]): Builder;
@@ -14118,6 +14158,7 @@ declare namespace LiteMol.Core.Structure.Query {
     function inside(q: Source, where: Source): Builder;
     function intersectWith(what: Source, where: Source): Builder;
     function flatten(what: Source, selector: (f: Fragment) => FragmentSeq): Builder;
+    function except(what: Source, toRemove: Source): Builder;
     /**
      * Shortcuts
      */
@@ -14129,6 +14170,7 @@ declare namespace LiteMol.Core.Structure.Query {
      */
     namespace Compiler {
         function compileEverything(): (ctx: Context) => FragmentSeq;
+        function compileAllAtoms(): (ctx: Context) => FragmentSeq;
         function compileAtoms(elements: string[] | number[], sel: (model: Structure.Molecule.Model) => string[] | number[]): (ctx: Context) => FragmentSeq;
         function compileAtomIndices(indices: number[]): (ctx: Context) => FragmentSeq;
         function compileFromIndices(complement: boolean, indices: number[], tableProvider: (molecule: Structure.Molecule.Model) => {
@@ -14161,6 +14203,7 @@ declare namespace LiteMol.Core.Structure.Query {
         function compileAmbientResidues(where: Source, radius: number): (ctx: Context) => FragmentSeq;
         function compileWholeResidues(where: Source): (ctx: Context) => FragmentSeq;
         function compileFlatten(what: Source, selector: (f: Fragment) => FragmentSeq): (ctx: Context) => FragmentSeq;
+        function compileExcept(what: Source, toRemove: Source): (ctx: Context) => FragmentSeq;
     }
 }
 declare namespace LiteMol.Core.Structure.Query.Algebraic {
@@ -14201,6 +14244,21 @@ declare namespace LiteMol.Visualization {
 declare namespace LiteMol.Visualization {
     export import THREE = LiteMolTHREE;
 }
+declare namespace LiteMol.Visualization.Utils {
+    class Palette {
+        static getRandomColor(amountOfGrey?: number): Visualization.Color;
+        static randomMix(color1: Visualization.Color, color2: Visualization.Color, color3: Visualization.Color, greyControl: number): Visualization.Color;
+        private static previous;
+        /**
+         *
+         * @example
+         *   let min = Palette.getRandomColor(0.3);
+         *   let max = Palette.getRandomColor(0.3);
+         *   let color = Palette.interpolate(0.1, min, 0.6, max, 0.354);
+         */
+        static interpolate(min: number, minColor: Visualization.Color, max: number, maxColor: Visualization.Color, value: number, target?: Visualization.Color): Color;
+    }
+}
 declare namespace LiteMol.Visualization {
     function checkWebGL(): boolean;
     interface IDisposable {
@@ -14214,6 +14272,7 @@ declare namespace LiteMol.Visualization {
         }): void;
         static setPickColor(objectId: number, objectIdWidth: number, elementId: number, buffer: Float32Array, offset: number): void;
         static toSurface(source: THREE.Geometry): Core.Geometry.Surface;
+        static toRawGeometry(source: THREE.Geometry): Geometry.RawGeometry;
         static getIndexedBufferGeometry(source: THREE.Geometry): THREE.BufferGeometry;
     }
 }
@@ -14246,6 +14305,7 @@ declare namespace LiteMol.Visualization {
     }
     interface Theme {
         colors: Theme.ColorMap;
+        variables: Theme.VariableMap;
         transparency: Theme.Transparency;
         interactive: boolean;
         disableFog: boolean;
@@ -14255,6 +14315,7 @@ declare namespace LiteMol.Visualization {
     namespace Theme {
         interface Props {
             colors?: ColorMap;
+            variables?: VariableMap;
             transparency?: Theme.Transparency;
             interactive?: boolean;
             disableFog?: boolean;
@@ -14267,6 +14328,10 @@ declare namespace LiteMol.Visualization {
         interface ColorMap {
             get(key: any): Color | undefined;
             forEach(f: (value: Color, key: any) => void): void;
+        }
+        interface VariableMap {
+            get(key: any): any | undefined;
+            forEach(f: (value: any, key: any) => void): void;
         }
         namespace Default {
             const HighlightColor: Color;
@@ -14284,6 +14349,7 @@ declare namespace LiteMol.Visualization {
         function createMapping(mapping: ElementMapping, props?: Props): Theme;
         function createColorMapMapping(getProperty: (index: number) => any, map: ColorMap, fallbackColor: Color): ElementMapping;
         function createPalleteMapping(getProperty: (index: number) => any, pallete: Color[]): ElementMapping;
+        function createPalleteIndexMapping(getProperty: (index: number) => number, pallete: Color[]): ElementMapping;
     }
 }
 declare namespace LiteMol.Visualization {
@@ -14304,7 +14370,8 @@ declare namespace LiteMol.Visualization {
         static getMeshMaterial(shading?: THREE.Shading, isWireframe?: boolean): THREE.ShaderMaterial;
         static getPhongVertexColorMaterial(): THREE.MeshPhongMaterial;
         static getDefaultHighlightMaterial(): THREE.MeshPhongMaterial;
-        static applyColorToMap(map: Selection.VertexMap, indices: number[], bufferAttribute: THREE.BufferAttribute, getter: (i: number, c: Color) => void): void;
+        static applyColorToBuffer(bufferAttribute: THREE.BufferAttribute, color: Color): void;
+        static applyColorToMap(map: Selection.VertexMap, bufferAttribute: THREE.BufferAttribute, getter: (i: number, c: Color) => void): void;
     }
 }
 declare namespace LiteMol.Visualization {
@@ -14335,7 +14402,7 @@ declare namespace LiteMol.Visualization {
         applySelection(indices: number[], action: Selection.Action): boolean;
         getBoundingSphereOfSelection(indices: number[]): {
             radius: number;
-            center: Core.Geometry.LinearAlgebra.ObjectVec3;
+            center: Core.Geometry.LinearAlgebra.Vector3;
         } | undefined;
         abstract highlightElement(pickId: number, highlight: boolean): boolean;
         abstract getPickElements(pickId: number): number[];
@@ -14383,6 +14450,9 @@ declare namespace LiteMol.Visualization {
         private slabWheelRate;
         private _planeDelta;
         private subs;
+        private enableWheel;
+        private mouseMoveDelta;
+        private lastMousePosition;
         readonly planeDelta: LiteMol.Core.Rx.IObservable<number>;
         updateSize(w: number, h: number): void;
         updateRadius(r: number): void;
@@ -14391,6 +14461,8 @@ declare namespace LiteMol.Visualization {
         private touchstart(event);
         private touchend(event);
         private touchmove(event);
+        private mousemove(e);
+        private mouseOut();
         constructor(element: HTMLElement);
     }
     class Camera {
@@ -14702,9 +14774,56 @@ declare namespace LiteMol.Visualization.Selection {
     function applyActionToRange(array: Float32Array, start: number, end: number, action: Action): boolean;
     function applyActionToBuffer(buffer: THREE.BufferAttribute, action: Action): boolean;
 }
+declare namespace LiteMol.Visualization.Geometry {
+    interface RawGeometry {
+        vertices: Float32Array;
+        vertexCount: number;
+        indices: Uint32Array;
+        indexCount: number;
+        normals?: Float32Array;
+        elementSize: 2 | 3;
+    }
+    function toBufferGeometry(raw: RawGeometry): THREE.BufferGeometry;
+    function addAttribute(geom: THREE.BufferGeometry, name: string, a: ArrayLike<number>, elementSize: number): void;
+    import CoreUtils = Core.Utils;
+    import ChunkedArray = CoreUtils.ChunkedArray;
+    import ArrayBuilder = CoreUtils.ArrayBuilder;
+    type Builder = Builder.Static | Builder.Dynamic;
+    namespace Builder {
+        interface Static {
+            type: 'Static';
+            vertices: ArrayBuilder<number>;
+            indices: ArrayBuilder<number>;
+            normals?: ArrayBuilder<number>;
+            elementSize: 2 | 3;
+        }
+        interface Dynamic {
+            type: 'Dynamic';
+            vertices: ChunkedArray<number>;
+            indices: ChunkedArray<number>;
+            normals?: ChunkedArray<number>;
+            elementSize: 2 | 3;
+        }
+        function createStatic(vertexCount: number, indexCount: number, elementSize?: 2 | 3): Static;
+        function createDynamic(vertexChunkSize: number, indexChunkSize: number, elementSize?: 2 | 3): Dynamic;
+        import Geom = Core.Geometry;
+        import Vec3 = Geom.LinearAlgebra.Vector3;
+        import Mat4 = Geom.LinearAlgebra.Matrix4;
+        function addRawTransformed(builder: Builder, geom: RawGeometry, scale: number[] | undefined, translation: number[] | undefined, rotation: Mat4 | undefined): void;
+        function addVertex3s(builder: Static, x: number, y: number, z: number): void;
+        function addNormal3s(builder: Static, x: number, y: number, z: number): void;
+        function addIndex3s(builder: Static, i: number, j: number, k: number): void;
+        function addVertex3d(builder: Dynamic, x: number, y: number, z: number): void;
+        function addNormal3d(builder: Dynamic, x: number, y: number, z: number): void;
+        function addIndex3d(builder: Dynamic, i: number, j: number, k: number): void;
+        function getDashTemplate(): RawGeometry;
+        function addDashedLine(builder: Builder, a: Vec3, b: Vec3, size: number, gap: number, r: number): void;
+        function toBufferGeometry(builder: Builder): THREE.BufferGeometry;
+    }
+}
 declare namespace LiteMol.Visualization.Surface {
     import Data = Core.Geometry.Surface;
-    function buildGeometry(data: Data, computation: Core.Computation.Context, isWireframe: boolean): LiteMol.Promise<Geometry>;
+    function buildGeometry(data: Data, computation: Core.Computation.Context, isWireframe: boolean): Promise<Geometry>;
     class Geometry extends GeometryBase {
         geometry: THREE.BufferGeometry;
         vertexToElementMap: number[];
@@ -14712,8 +14831,6 @@ declare namespace LiteMol.Visualization.Surface {
         pickGeometry: THREE.BufferGeometry;
         pickPlatesGeometry: THREE.BufferGeometry;
         vertexStateBuffer: THREE.BufferAttribute;
-        center: THREE.Vector3;
-        radius: number;
         dispose(): void;
         constructor();
     }
@@ -14734,7 +14851,7 @@ declare namespace LiteMol.Visualization.Surface {
         getPickElements(pickId: number): number[];
         getBoundingSphereOfSelection(indices: number[]): {
             radius: number;
-            center: Core.Geometry.LinearAlgebra.ObjectVec3;
+            center: Core.Geometry.LinearAlgebra.Vector3;
         } | undefined;
         applyThemeInternal(theme: Theme): void;
         protected getPickObjectVisibility(visible: boolean): boolean;
@@ -14775,11 +14892,106 @@ declare namespace LiteMol.Visualization.Lines {
         }): Core.Computation<Model>;
     }
 }
+declare namespace LiteMol.Visualization.Labels {
+    /**
+     * Adapted from https://github.com/arose/ngl
+     * MIT License Copyright (C) 2014+ Alexander Rose
+     */
+    interface TextAtlasParams {
+        font: string[];
+        size: number;
+        style: string;
+        variant: string;
+        weight: string;
+        outline: number;
+        width: number;
+        height: number;
+    }
+    const DefaultTextAtlasParams: TextAtlasParams;
+    function getTextAtlas(params: Partial<TextAtlasParams>): TextAtlas;
+    interface MappedMetrics {
+        x: number;
+        y: number;
+        w: number;
+        h: number;
+    }
+    class TextAtlas {
+        params: TextAtlasParams;
+        private gamma;
+        private mapped;
+        private state;
+        private placeholder;
+        lineHeight: number;
+        private canvas;
+        texture: THREE.Texture;
+        constructor(params: Partial<TextAtlasParams>);
+        private build();
+        private map(text);
+        getTextMetrics(text: string): MappedMetrics;
+        private draw(text);
+        private populate();
+    }
+}
+declare namespace LiteMol.Visualization.Labels.Geometry {
+    /**
+     * Adapted from https://github.com/arose/ngl
+     * MIT License Copyright (C) 2014+ Alexander Rose
+     */
+    function create(params: LabelsParams): {
+        geometry: THREE.BufferGeometry;
+        texture: THREE.Texture;
+        options: LabelsOptions;
+    };
+}
+declare namespace LiteMol.Visualization.Labels.Material {
+    /**
+     * Adapted from https://github.com/arose/ngl
+     * MIT License Copyright (C) 2014+ Alexander Rose
+     */
+    const VERTEX_SHADER: string;
+    const FRAGMENT_SHADER: string;
+}
+declare namespace LiteMol.Visualization.Labels.Material {
+    function create(texture: THREE.Texture): THREE.ShaderMaterial;
+}
+declare namespace LiteMol.Visualization.Labels {
+    interface LabelsOptions {
+        fontFamily: "sans-serif" | "monospace" | "serif";
+        fontSize: number;
+        fontStyle: "normal" | "italic";
+        fontWeight: "normal" | "bold";
+        useSDF: boolean;
+        attachment: "bottom-left" | "bottom-center" | "bottom-right" | "middle-left" | "middle-center" | "middle-right" | "top-left" | "top-center" | "top-right";
+        backgroundMargin: number;
+    }
+    const DefaultLabelsOptions: LabelsOptions;
+    interface LabelsParams {
+        positions: Core.Structure.PositionTable;
+        sizes: number[];
+        labels: string[];
+        options?: Partial<LabelsOptions>;
+        theme: Theme;
+    }
+    class Model extends Visualization.Model {
+        private geometry;
+        private material;
+        private labels;
+        private options;
+        protected applySelectionInternal(indices: number[], action: Selection.Action): boolean;
+        getPickElements(pickId: number): number[];
+        highlightElement(pickId: number, highlight: boolean): boolean;
+        protected highlightInternal(isOn: boolean): boolean;
+        private applyColoring(theme);
+        protected applyThemeInternal(theme: Theme): void;
+        static create(entity: any, params: LabelsParams): Core.Computation<Model>;
+    }
+}
 declare namespace LiteMol.Visualization.Molecule.BallsAndSticks {
     interface Parameters {
         tessalation?: number;
         atomRadius?: (i: number) => number;
         hideBonds?: boolean;
+        hideHydrogens?: boolean;
         bondRadius?: number;
         customMaxBondLengths?: {
             get(e: string): number | undefined;
@@ -14809,13 +15021,12 @@ declare namespace LiteMol.Visualization.Molecule.BallsAndSticks {
     }
 }
 declare namespace LiteMol.Visualization.Molecule.BallsAndSticks {
-    function buildGeometry(model: Core.Structure.Molecule.Model, parameters: Parameters, atomIndices: number[], ctx: Core.Computation.Context): LiteMol.Promise<BallsAndSticksGeometry>;
+    function buildGeometry(model: Core.Structure.Molecule.Model, parameters: Parameters, atomIndices: number[], ctx: Core.Computation.Context): Promise<BallsAndSticksGeometry>;
     class BallsAndSticksGeometry extends GeometryBase {
         atomsGeometry: THREE.BufferGeometry;
         bondsGeometry: THREE.BufferGeometry;
         pickGeometry: THREE.BufferGeometry;
         atomVertexMap: Selection.VertexMap;
-        bondVertexMap: Selection.VertexMap;
         vertexStateBuffer: THREE.BufferAttribute;
         dispose(): void;
     }
@@ -14824,6 +15035,7 @@ declare namespace LiteMol.Visualization.Molecule.Cartoons.Geometry {
     class Data extends GeometryBase {
         geometry: THREE.BufferGeometry;
         pickGeometry: THREE.BufferGeometry;
+        gapsGeometry: THREE.BufferGeometry | undefined;
         vertexMap: Selection.VertexMap;
         vertexStateBuffer: THREE.BufferAttribute;
         dispose(): void;
@@ -14855,55 +15067,13 @@ declare namespace LiteMol.Visualization.Molecule.Cartoons.Geometry {
         builder: Builder;
         geom: Data;
     }
-    function create(model: Core.Structure.Molecule.Model, atomIndices: number[], linearSegments: number, parameters: any, isTrace: boolean, computation: Core.Computation.Context): LiteMol.Promise<Data>;
+    function create(model: Core.Structure.Molecule.Model, atomIndices: number[], linearSegments: number, parameters: any, isTrace: boolean, computation: Core.Computation.Context): Promise<Data>;
 }
 declare namespace LiteMol.Visualization.Molecule.Cartoons.Geometry {
-    import ChunkedArray = Core.Utils.ChunkedArray;
-    class CartoonAsymUnitState {
-        private typeBuilder;
-        private uPositionsBuilder;
-        private vPositionsBuilder;
-        private pPositionsBuilder;
-        private dPositionsBuilder;
-        residueType: Core.Structure.SecondaryStructureType[];
-        uPositions: number[];
-        vPositions: number[];
-        pPositions: number[];
-        dPositions: number[];
-        uvLength: number;
-        residueCount: number;
-        constructor(residueCount: number);
-        addResidue(rIndex: number, arrays: {
-            atomStartIndex: number[];
-            atomEndIndex: number[];
-            name: string[];
-            x: number[];
-            y: number[];
-            z: number[];
-        }, sType: Core.Structure.SecondaryStructureType): boolean;
-        finishResidues(): void;
-        addControlPoint(p: THREE.Vector3, d: THREE.Vector3): void;
-        finishContols(): void;
-    }
     class CartoonAsymUnit {
         private model;
         private elements;
         linearSegmentCount: number;
-        private static maskSplit(element, mask, target);
-        static isCartoonLike(atomIndices: number[], start: number, end: number, name: string[], a: string, b: string, isAmk: boolean): boolean;
-        static createMask(model: Core.Structure.Molecule.Model, atomIndices: number[]): boolean[];
-        private static isUnknownSecondaryStructure(model);
-        private static approximateSecondaryStructure(model, parent);
-        private static ZhangHelixDistance;
-        private static ZhangHelixDelta;
-        private static ZhangSheetDistance;
-        private static ZhangSheetDelta;
-        private static ZhangP1;
-        private static ZhangP2;
-        private static zhangSkolnickSStrace(model, trace, parent, elements);
-        private static zhangSkolnickSSresidue(model, trace, i, distances, delta);
-        private static throwIfEmpty(ss);
-        static buildUnits(model: Core.Structure.Molecule.Model, atomIndices: number[], linearSegmentCount: number): CartoonAsymUnit[];
         private controlPointsBuilder;
         private torsionVectorsBuilder;
         private normalVectorsBuilder;
@@ -14919,16 +15089,26 @@ declare namespace LiteMol.Visualization.Molecule.Cartoons.Geometry {
         residueType: Core.Structure.SecondaryStructureType[];
         residueIndex: Int32Array;
         backboneOnly: boolean;
+        startResidueIndex: number;
+        endResidueIndex: number;
         constructor(model: Core.Structure.Molecule.Model, elements: Core.Structure.SecondaryStructureElement[], linearSegmentCount: number);
-        private createControlPoints(state);
-        private initPositions(state);
-        private initControlsPoints(state);
-        private computeSplines(state);
+        private createControlPoints(builder);
+        private initPositions(builder);
+        private initControlsPoints(builder);
+        private computeSplines(builder);
         private addSplineNode(previousControlPoint, controlPoint, torsionPoint);
         private reflectPositions(xs, u, v, a, b, c, d, r1, r2);
-        private static reflect(target, p1, p2, amount);
-        private static spline(target, p1, p2, p3, t);
     }
+    namespace CartoonAsymUnit {
+        function reflect(target: THREE.Vector3, p1: THREE.Vector3, p2: THREE.Vector3, amount: number): void;
+        function spline(target: THREE.Vector3, p1: THREE.Vector3, p2: THREE.Vector3, p3: THREE.Vector3, t: number): void;
+        function maskSplit(element: Core.Structure.SecondaryStructureElement, mask: boolean[], target: Core.Structure.SecondaryStructureElement[]): void;
+        function isCartoonLike(atomIndices: number[], start: number, end: number, name: string[], a: string, b: string, isAmk: boolean): boolean;
+        function createMask(model: Core.Structure.Molecule.Model, atomIndices: number[]): boolean[];
+        function buildUnits(model: Core.Structure.Molecule.Model, atomIndices: number[], linearSegmentCount: number): CartoonAsymUnit[];
+    }
+}
+declare namespace LiteMol.Visualization.Molecule.Cartoons.Geometry {
     class CartoonsGeometryParams {
         radialSegmentCount: number;
         turnWidth: number;
@@ -14942,14 +15122,17 @@ declare namespace LiteMol.Visualization.Molecule.Cartoons.Geometry {
         tessalation: number;
         static Default: CartoonsGeometryParams;
     }
+    import GB = Visualization.Geometry.Builder;
     class CartoonsGeometryState {
         params: CartoonsGeometryParams;
+        private residueCount;
         residueIndex: number;
-        verticesDone: number;
-        trianglesDone: number;
-        vertexBuffer: ChunkedArray<number>;
-        normalBuffer: ChunkedArray<number>;
-        indexBuffer: ChunkedArray<number>;
+        readonly verticesDone: number;
+        readonly trianglesDone: number;
+        builder: GB.Dynamic;
+        private vs;
+        private is;
+        gapsBuilder: GB.Dynamic;
         translationMatrix: THREE.Matrix4;
         scaleMatrix: THREE.Matrix4;
         rotationMatrix: THREE.Matrix4;
@@ -14961,7 +15144,7 @@ declare namespace LiteMol.Visualization.Molecule.Cartoons.Geometry {
         constructor(params: CartoonsGeometryParams, residueCount: number);
     }
     function buildUnit(unit: CartoonAsymUnit, ctx: Context): void;
-    function buildUnitsAsync(ctx: Context): LiteMol.Promise<void>;
+    function buildUnitsAsync(ctx: Context): Promise<void>;
     function createGeometry(ctx: Context): void;
     class Builder {
         constructor();
@@ -15001,6 +15184,7 @@ declare namespace LiteMol.Visualization.Molecule.Cartoons {
     class Model extends Visualization.Model {
         private model;
         private material;
+        private gapMaterial;
         private pickMaterial;
         private queryContext;
         private cartoons;
@@ -15032,43 +15216,73 @@ declare namespace LiteMol.Visualization.Molecule.Colors {
     const DefaultPallete: Color[];
 }
 declare namespace LiteMol.Visualization.Primitive {
-    function createSphereSurface(center: Core.Geometry.LinearAlgebra.ObjectVec3, radius: number, tessalation: number): Core.Geometry.Surface;
+    function createSphereSurface(sphere: Shape.Sphere): Core.Geometry.Surface;
+    function createTubeSurface(tube: Shape.Tube): Core.Geometry.Surface;
+    function createCone(cone: Shape.Cone): Core.Geometry.Surface;
+    function createArrow(arrow: Shape.Arrow): Shape[];
+    function createDashes(line: Shape.DashedLine): Shape.Surface[];
 }
 declare namespace LiteMol.Visualization.Primitive {
     import LA = Core.Geometry.LinearAlgebra;
     import Surface = Core.Geometry.Surface;
-    type ShapeType = 'Sphere' | 'Surface';
-    type Shape = {
-        type: 'Sphere';
-        center: LA.ObjectVec3;
-        radius: number;
-        id: number;
-        tessalation?: number;
-    } | {
-        type: 'Surface';
-        surface: Surface;
-        id: number;
-    };
+    type Shape = Shape.Sphere | Shape.Tube | Shape.Surface | Shape.DashedLine | Shape.Cone | Shape.Arrow;
+    namespace Shape {
+        type Sphere = {
+            type: 'Sphere';
+            center: LA.Vector3;
+            radius: number;
+            id: number;
+            tessalation?: number;
+        };
+        type Tube = {
+            type: 'Tube';
+            a: LA.Vector3;
+            b: LA.Vector3;
+            radius: number;
+            id: number;
+            slices?: number;
+        };
+        type DashedLine = {
+            type: 'DashedLine';
+            a: LA.Vector3;
+            b: LA.Vector3;
+            width: number;
+            dashSize: number;
+            spaceSize?: number;
+            id: number;
+        };
+        type Arrow = {
+            type: 'Arrow';
+            a: LA.Vector3;
+            b: LA.Vector3;
+            radius: number;
+            id: number;
+            coneRadius: number;
+            coneHeight: number;
+            slices?: number;
+        };
+        type Cone = {
+            type: 'Cone';
+            a: LA.Vector3;
+            b: LA.Vector3;
+            radius: number;
+            id: number;
+            slices?: number;
+        };
+        type Surface = {
+            type: 'Surface';
+            surface: Core.Geometry.Surface;
+            id: number;
+            scale?: number[];
+            translation?: number[];
+            rotation?: LA.Matrix4;
+        };
+    }
     class Builder {
         private shapes;
         add(shape: Shape): this;
         buildSurface(): Core.Computation<Surface>;
         static create(): Builder;
-    }
-}
-declare namespace LiteMol.Visualization.Utils {
-    class Palette {
-        static getRandomColor(amountOfGrey?: number): Visualization.Color;
-        static randomMix(color1: Visualization.Color, color2: Visualization.Color, color3: Visualization.Color, greyControl: number): Visualization.Color;
-        private static previous;
-        /**
-         *
-         * @example
-         *   let min = Palette.getRandomColor(0.3);
-         *   let max = Palette.getRandomColor(0.3);
-         *   let color = Palette.interpolate(0.1, min, 0.6, max, 0.354);
-         */
-        static interpolate(min: number, minColor: Visualization.Color, max: number, maxColor: Visualization.Color, value: number, target?: Visualization.Color): Color;
     }
 }
 declare namespace LiteMol.Bootstrap {
@@ -15123,10 +15337,10 @@ declare namespace LiteMol.Bootstrap.Utils.Query {
 declare namespace LiteMol.Bootstrap.Utils.Query {
     class ValueOrError<A> {
         isError: boolean;
-        value: A;
+        value: A | undefined;
         error: any;
         bind<B>(f: (v: A) => ValueOrError<B>): ValueOrError<B>;
-        constructor(isError: boolean, value?: A, error?: any);
+        constructor(isError: boolean, value?: A | undefined, error?: any);
     }
     module ValueOrError {
         function error(err: any): ValueOrError<undefined>;
@@ -15233,7 +15447,7 @@ declare namespace LiteMol.Bootstrap {
         private info;
         readonly id: number;
         readonly reportTime: boolean;
-        run(context: Context): __Promise.Promise<A>;
+        run(context: Context): Promise<A>;
         runWithContext(context: Context): Task.Running<A>;
         setReportTime(report: boolean): this;
         constructor(name: string, type: Task.Type, computation: Computation<A>);
@@ -15717,23 +15931,17 @@ declare namespace LiteMol.Bootstrap.Visualization {
             name: string;
             description?: string;
             colors?: Immutable.Map<string, LiteMol.Visualization.Color>;
+            variables?: Immutable.Map<string, any>;
             provider: (e: Entity.Any, props?: LiteMol.Visualization.Theme.Props) => LiteMol.Visualization.Theme;
         }
         interface Instance {
             template: Template;
             colors?: Immutable.Map<string, LiteMol.Visualization.Color>;
+            variables?: Immutable.Map<string, any>;
             transparency?: TransparencyDescription;
             interactive?: boolean;
             disableFog?: boolean;
         }
-        interface Props {
-            colors?: {
-                [name: string]: LiteMol.Visualization.Color;
-            };
-            transparency?: TransparencyDescription;
-            interactive?: boolean;
-        }
-        function mergeProps(theme: Instance, props: Props): Instance;
         function getProps(theme: Instance): LiteMol.Visualization.Theme.Props;
     }
 }
@@ -15745,11 +15953,20 @@ declare namespace LiteMol.Bootstrap.Visualization.Molecule {
         index: number[];
         property: any[];
     }, pallete: LiteMol.Visualization.Color[]): (e: Entity.Any, props?: Vis.Theme.Props | undefined) => Vis.Theme;
+    function createCachedPaletteThemeProvider(name: string, provider: (m: Core.Structure.Molecule.Model) => {
+        index: number[];
+        property: any[];
+    }, pallete: LiteMol.Visualization.Color[]): (e: Entity.Any, props?: Vis.Theme.Props | undefined) => Vis.Theme;
     function uniformThemeProvider(e: Entity.Any, props?: LiteMol.Visualization.Theme.Props): Vis.Theme;
     function createColorMapThemeProvider(provider: (m: Core.Structure.Molecule.Model) => {
         index: number[];
         property: any[];
     }, colorMap: LiteMol.Visualization.Theme.ColorMap, fallbackColor: LiteMol.Visualization.Color): (e: Entity.Any, props?: Vis.Theme.Props | undefined) => Vis.Theme;
+    function createCachedColorMapThemeProvider(name: string, provider: (m: Core.Structure.Molecule.Model) => {
+        index: number[];
+        property: any[];
+    }, colorMap: LiteMol.Visualization.Theme.ColorMap, fallbackColor: LiteMol.Visualization.Color): (e: Entity.Any, props?: Vis.Theme.Props | undefined) => Vis.Theme;
+    const RainbowPalette: Vis.Color[];
     namespace Default {
         const Themes: Theme.Template[];
         const CartoonThemeTemplate: Theme.Template;
@@ -15781,6 +15998,7 @@ declare namespace LiteMol.Bootstrap.Visualization.Molecule {
         vdwScaling?: number;
         atomRadius?: number;
         bondRadius: number;
+        hideHydrogens?: boolean;
         customMaxBondLengths?: {
             [e: string]: number;
         };
@@ -15802,6 +16020,27 @@ declare namespace LiteMol.Bootstrap.Visualization.Molecule {
 }
 declare namespace LiteMol.Bootstrap.Visualization.Molecule {
     function create(source: Source, transform: Tree.Transform<Entity.Molecule.Model | Entity.Molecule.Selection, Entity.Molecule.Visual, any>, style: Style<any>): Task<Entity.Molecule.Visual>;
+}
+declare namespace LiteMol.Bootstrap.Visualization.Labels {
+    function createMoleculeLabels(parent: Entity.Any, transform: Tree.Transform<Entity.Any, Entity.Visual.Labels, any>, style: Style<Utils.Molecule.Labels3DOptions>): Task<Entity.Visual.Labels>;
+    function createGenericLabels(parent: Entity.Any, transform: Tree.Transform<Entity.Any, Entity.Visual.Labels, any>, params: Bootstrap.Entity.Transformer.Labels.CreateParams): Task<Entity.Visual.Labels>;
+}
+declare namespace LiteMol.Bootstrap.Visualization.Labels {
+    type Style<P> = Visualization.Style<'Labels', P>;
+    namespace Style {
+        function moleculeHasOnlyThemeChanged(oldS: Style<Utils.Molecule.Labels3DOptions>, newS: Style<Utils.Molecule.Labels3DOptions>): boolean;
+        function createMoleculeStyle(params: {
+            kind: Utils.Molecule.Labels3DOptions['kind'];
+            labelsOptions?: LiteMol.Visualization.Labels.LabelsOptions;
+            theme?: Theme.Instance;
+        }): Style<Utils.Molecule.Labels3DOptions>;
+    }
+    namespace Default {
+        import Vis = LiteMol.Visualization;
+        const Theme: Theme.Template;
+        const MoleculeLabels: Style<Utils.Molecule.Labels3DOptions>;
+        const GenericLabels: Style<Vis.Labels.LabelsOptions>;
+    }
 }
 declare namespace LiteMol.Bootstrap.Visualization.Density {
     function create(parent: Entity.Density.Data, transform: Tree.Transform<Entity.Density.Data, Entity.Density.Visual, any>, style: Style): Task<Entity.Density.Visual>;
@@ -15962,13 +16201,16 @@ declare namespace LiteMol.Bootstrap.Entity {
         }
         interface Any extends Entity<Props<any>> {
         }
-        interface Surface extends Entity<Props<"Surface"> & {
+        interface Surface extends Entity<Props<'Surface'> & {
             tag: any;
         }> {
         }
         const Surface: Type<Props<"Surface"> & {
             tag: any;
         }>;
+        interface Labels extends Entity<Visual.Props<'Labels'>> {
+        }
+        const Labels: Type<Props<"Labels">>;
     }
     namespace Molecule {
         interface Molecule extends Entity<{
@@ -16044,6 +16286,16 @@ declare namespace LiteMol.Bootstrap.Entity.Transformer.Basic {
     const Delay: Transformer<Root, Action, {
         timeoutMs: number;
     }>;
+    interface CreateSurfaceVisualParams {
+        surface: Core.Geometry.Surface;
+        theme: LiteMol.Visualization.Theme;
+        label?: string;
+        tag?: any;
+        isWireframe?: boolean;
+        isNotInteractive?: boolean;
+        taskType?: Task.Type;
+    }
+    const CreateSurfaceVisual: Transformer<Root, Visual.Surface, CreateSurfaceVisualParams>;
 }
 declare namespace LiteMol.Bootstrap.Entity.Transformer.Molecule {
     interface DownloadMoleculeSourceParams {
@@ -16089,7 +16341,7 @@ declare namespace LiteMol.Bootstrap.Entity.Transformer.Molecule {
         silent?: boolean;
         inFullContext?: boolean;
     }
-    const CreateSelectionFromQuery: Tree.Transformer<Entity.Molecule.Model | Entity.Molecule.Visual, Entity.Molecule.Selection, CreateSelectionFromQueryParams>;
+    const CreateSelectionFromQuery: Tree.Transformer<Entity.Molecule.Model | Entity.Molecule.Selection | Entity.Molecule.Visual, Entity.Molecule.Selection, CreateSelectionFromQueryParams>;
     interface CreateAssemblyParams {
         name: string;
     }
@@ -16122,7 +16374,21 @@ declare namespace LiteMol.Bootstrap.Entity.Transformer.Molecule {
         water?: boolean;
         waterRef?: string;
     }
-    const CreateMacromoleculeVisual: Tree.Transformer<Entity.Molecule.Model, Action, CreateMacromoleculeVisualParams>;
+    const CreateMacromoleculeVisual: Tree.Transformer<Entity.Molecule.Model | Entity.Molecule.Selection, Action, CreateMacromoleculeVisualParams>;
+    interface CreateLabelsParams {
+        style: Visualization.Labels.Style<Utils.Molecule.Labels3DOptions>;
+    }
+    const CreateLabels: Tree.Transformer<Entity.Molecule.Model | Entity.Molecule.Selection | Entity.Molecule.Visual, Visual.Labels, CreateLabelsParams>;
+}
+declare namespace LiteMol.Bootstrap.Entity.Transformer.Labels {
+    interface CreateParams {
+        positions: Core.Structure.PositionTable;
+        sizes: number[];
+        labels: string[];
+        options: LiteMol.Visualization.Labels.LabelsOptions;
+        style: Visualization.Labels.Style<LiteMol.Visualization.Labels.LabelsOptions>;
+    }
+    const Create: Tree.Transformer<Root, Visual.Labels, CreateParams>;
 }
 declare namespace LiteMol.Bootstrap.Entity.Transformer.Data {
     interface DownloadParams {
@@ -16216,6 +16482,7 @@ declare namespace LiteMol.Bootstrap.Entity.Transformer.Molecule.CoordinateStream
 declare namespace LiteMol.Bootstrap.Utils.Molecule {
     import Structure = LiteMol.Core.Structure;
     import Geometry = LiteMol.Core.Geometry;
+    import LA = Geometry.LinearAlgebra;
     function findModel(entity: Entity.Any): Entity.Molecule.Model | undefined;
     function findModelOrSelection(entity: Entity.Any): Entity.Molecule.Model | Entity.Molecule.Selection | undefined;
     function findMolecule(entity: Entity.Any): Entity.Molecule.Molecule | undefined;
@@ -16248,7 +16515,16 @@ declare namespace LiteMol.Bootstrap.Utils.Molecule {
         radiusVisit(i: number): void;
         constructor(model: LiteMol.Core.Structure.Molecule.Model);
     }
-    function getCentroidAndRadius(m: Structure.Molecule.Model, indices: number[], into: Geometry.LinearAlgebra.ObjectVec3): number;
+    function getCentroidAndRadius(m: Structure.Molecule.Model, indices: number[], into: LA.Vector3): number;
+    interface Labels3DOptions {
+        kind: 'Residue-Name' | 'Residue-Full-Id' | 'Atom-Name' | 'Atom-Element';
+        labelsOptions: LiteMol.Visualization.Labels.LabelsOptions;
+    }
+    const Labels3DKinds: Labels3DOptions['kind'][];
+    const Labels3DKindLabels: {
+        [kind: string]: string;
+    };
+    function create3DLabelsParams(entity: Entity.Any, options: Labels3DOptions, theme: LiteMol.Visualization.Theme): LiteMol.Visualization.Labels.LabelsParams;
 }
 declare namespace LiteMol.Bootstrap.Behaviour {
     class Streams {
@@ -16412,7 +16688,7 @@ declare namespace LiteMol.Bootstrap.Components.Transform {
         updateParams(params: Partial<P>): void;
         autoUpdateParams(params: Partial<P>): void;
         readonly isUpdate: boolean;
-        apply(): Core.Computation<{}> | __Promise.Promise<Tree.Node.Any> | undefined;
+        apply(): Promise<Tree.Node.Any> | Core.Computation<{}> | undefined;
         setParams(params: P): void;
         constructor(context: Context, transformer: Tree.Transformer.Any, entity: Entity.Any);
     }
@@ -16428,14 +16704,23 @@ declare namespace LiteMol.Bootstrap.Components.Transform {
 }
 declare namespace LiteMol.Bootstrap.Components.Transform {
     import Vis = Bootstrap.Visualization;
-    class MoleculeVisual extends Controller<Bootstrap.Entity.Transformer.Molecule.CreateVisualParams> {
+    class VisualStyle<Params extends {
+        style: Bootstrap.Visualization.Style<any, any>;
+    }> extends Controller<Params> {
         updateTemplate(key: string, all: Map<string, Bootstrap.Visualization.Style.Any>): void;
         updateStyleParams(params: any): void;
         updateStyleTheme(theme: Partial<Vis.Theme.Instance>): void;
         updateThemeColor(name: string, value: LiteMol.Visualization.Color): void;
+        updateThemeVariable(name: string, value: any): void;
         updateThemeTransparency(transparency: LiteMol.Visualization.Theme.Transparency): void;
         private getThemeInstance(template);
         updateThemeDefinition(definition: Bootstrap.Visualization.Theme.Template): void;
+    }
+    class MoleculeVisual extends VisualStyle<Bootstrap.Entity.Transformer.Molecule.CreateVisualParams> {
+    }
+    class MoleculeLabels extends VisualStyle<Bootstrap.Entity.Transformer.Molecule.CreateLabelsParams> {
+    }
+    class GenericLabels extends VisualStyle<Bootstrap.Entity.Transformer.Labels.CreateParams> {
     }
     class DensityVisual<T, Styles> extends Controller<T> {
         private cloneStyle(prop?);
@@ -16548,7 +16833,7 @@ declare namespace LiteMol.Bootstrap {
         get(key: string): any;
     }
     class Context {
-        plugin: Plugin.Instance;
+        plugin: Plugin.Instance | undefined;
         id: string;
         dispatcher: Service.Dispatcher;
         logger: Service.Logger;
@@ -16565,7 +16850,7 @@ declare namespace LiteMol.Bootstrap {
         settings: Settings;
         createLayout(targets: Components.LayoutTarget[], target: HTMLElement): void;
         select(selector: Tree.Selector<Entity.Any>): Entity.Any[];
-        constructor(plugin?: Plugin.Instance);
+        constructor(plugin?: Plugin.Instance | undefined);
     }
 }
 declare namespace LiteMol.Bootstrap.Plugin {
@@ -16614,7 +16899,7 @@ declare namespace LiteMol.Plugin {
 }
 declare namespace LiteMol.Plugin {
     export import React = __LiteMolReact;
-    const ReactDOM: typeof React.__DOM;
+    const ReactDOM: typeof __LiteMolReactDOM;
     namespace Controls {
         class ChromePickerHelper extends __LiteMolColorPicker.ChromePicker {
         }
@@ -16893,7 +17178,7 @@ declare namespace LiteMol.Plugin.Views {
 }
 declare namespace LiteMol.Plugin.Views {
     class Layout extends View<Bootstrap.Components.Layout, {}, {}> {
-        private renderTarget(target);
+        private renderTarget(name, target);
         private updateTarget(name, regionType, layout);
         render(): JSX.Element;
     }
@@ -16993,6 +17278,9 @@ declare namespace LiteMol.Plugin.Views.Transform.Molecule {
         private createColors();
         protected renderControls(): JSX.Element;
     }
+    class CreateLabels extends Transform.ControllerBase<Bootstrap.Components.Transform.MoleculeLabels> {
+        renderControls(): JSX.Element;
+    }
 }
 declare namespace LiteMol.Plugin.Views.Transform.Density {
     import Transformer = Bootstrap.Entity.Transformer;
@@ -17010,6 +17298,9 @@ declare namespace LiteMol.Plugin.Views.Transform.Density {
         private show();
         protected renderControls(): JSX.Element;
     }
+}
+declare namespace LiteMol.Plugin.Views.Transform.Labels {
+    function optionsControls(controller: Bootstrap.Components.Transform.MoleculeLabels): JSX.Element[];
 }
 declare namespace LiteMol.Plugin.Views.Context {
     class Log extends View<Bootstrap.Components.Context.Log, {}, {}> {
@@ -17058,8 +17349,6 @@ declare namespace LiteMol.Plugin.Views.Entity {
         shouldComponentUpdate(nextProps: {
             type: Bootstrap.Entity.TypeInfo;
         }, nextState: {}, nextContext: any): boolean;
-        private part(name, i, t, ret);
-        private split(name, type, ret);
         private createBadge(name);
         render(): JSX.Element;
     }
@@ -17098,6 +17387,7 @@ declare namespace LiteMol.Plugin.Views.Visualization {
         showLogo?: boolean;
     }> {
         private host3d;
+        private defaultBg;
         state: {
             noWebGl: boolean;
             showLogo: boolean;
@@ -17280,6 +17570,7 @@ declare namespace LiteMol.Plugin {
         format?: string | Core.Formats.FormatInfo;
         onLoad?: () => void;
         onError?: (e: any) => void;
+        doNotCreateVisual?: boolean;
     }
     import Entity = Bootstrap.Entity;
     class Controller {
@@ -17319,7 +17610,7 @@ declare namespace LiteMol.Plugin {
         /**
          * Applies a state trasnform.
          */
-        applyTransform(transform: Bootstrap.Tree.Transform.Source): __Promise.Promise<void>;
+        applyTransform(transform: Bootstrap.Tree.Transform.Source): Promise<void>;
         /**
          * Remove all entities.
          */
@@ -17342,7 +17633,7 @@ declare namespace LiteMol.Plugin {
          *
          * Default format is mmCIF.
          */
-        loadMolecule(source: ControllerLoadMoleculeInfo): __Promise.Promise<void>;
+        loadMolecule(source: ControllerLoadMoleculeInfo): Promise<void>;
         /**
          * Destroys the the plugin instance.
          * The controller becomes unusable as a result.

@@ -110,6 +110,10 @@ namespace LiteMol.Core.Utils {
             let ret = <any>array.creator(array.elementSize * array.elementCount),
                 offset = (array.parts.length - 1) * array.chunkSize, offsetInner = 0, part: any;
 
+            if (array.parts.length === 1 && array.chunkSize === array.elementCount) {
+                return array.parts[0];
+            }
+
             if (array.parts.length > 1) {
                 if (array.parts[0].buffer) {
                     for (let i = 0; i < array.parts.length - 1; i++) {
@@ -249,6 +253,24 @@ namespace LiteMol.Core.Utils {
                 array: creator(chunkElementCount * elementSize),
                 currentIndex: 0,
                 elementCount: 0
+            }
+        }
+    }
+
+    export interface UniqueArray<T extends number | string> {
+        _set: FastSet<T>,
+        array: T[]
+    }
+
+    export function UniqueArray<T extends number | string>(): UniqueArray<T> {
+        return { _set: FastSet.create<T>(), array: [] };
+    }
+
+    export namespace UniqueArray {
+        export function add<T extends number | string>({ _set, array }: UniqueArray<T>, e: T) {
+            if (!_set.has(e)) {
+                _set.add(e);
+                array[array.length] = e;
             }
         }
     }

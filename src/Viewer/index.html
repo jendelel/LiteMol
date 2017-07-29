@@ -14,7 +14,7 @@
             if (theme === 'dark') theme = '';
             else if (theme === 'blue') theme = '-blue';
             else if (theme === 'light') theme = '-light';
-            else theme = '';
+            else theme = '-light';
                         
             var head  = document.getElementsByTagName('head')[0];
             var link  = document.createElement('link');
@@ -72,5 +72,8 @@
         <a href="https://webchem.ncbr.muni.cz/Wiki/LiteMol:UserManual" target="_blank" />Wiki</a>
     </div>
     <script src="LiteMol-viewer.min.js?lmversion=11"></script>
+    <script>
+        LiteMol.Viewer.createInstance(document.getElementById('app'), { isExpanded: true });
+    </script>
 </body>
 </html>

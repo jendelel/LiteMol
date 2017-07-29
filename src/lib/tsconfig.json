@@ -4,6 +4,7 @@
     "noImplicitAny": true,
     "noEmitOnError": true,
     "removeComments": false,
+    "alwaysStrict": true,
     "sourceMap": false,
     "declaration": true,
     "strictNullChecks": true,
@@ -48,13 +49,16 @@
     "./Core/Formats/Density/Formats.ts",
     // GEOMETRY
     "./Core/Geometry/LinearAlgebra.ts",
-    "./Core/Geometry/SubdivisionTree.ts",
     "./Core/Geometry/Surface.ts",
+    "./Core/Geometry/Query3D/Common.ts",
+    "./Core/Geometry/Query3D/SubdivisionTree.ts",
+    "./Core/Geometry/Query3D/SpatialHash.ts",
     "./Core/Geometry/MarchingCubes/MarchingCubes.ts",
     "./Core/Geometry/MarchingCubes/Tables.ts",
     "./Core/Geometry/MolecularSurface/MolecularIsoSurface.ts",
     // STRUCTURE
     "./Core/Structure/Molecule.ts",
+    "./Core/Structure/Bonds.ts",
     "./Core/Structure/Spacegroups.ts",
     "./Core/Structure/Symmetry.ts",
     "./Core/Structure/Query/Data.ts",
@@ -71,6 +75,8 @@
 
     "./Visualization/lib/lib.ts",
 
+    "./Visualization/Utils/Palette.ts",
+
     "./Visualization/Base/Helpers.ts",
     "./Visualization/Base/Theme.ts",
     "./Visualization/Base/Materials.ts",
@@ -80,6 +86,7 @@
     "./Visualization/Base/Scene.ts",
     "./Visualization/Base/CameraControls.ts",
     "./Visualization/Base/Selection.ts",
+    "./Visualization/Base/Geometry.ts",
 
     "./Visualization/Surface/Geometry.ts",
     "./Visualization/Surface/Model.ts",
@@ -87,17 +94,22 @@
     "./Visualization/Lines/Geometry.ts",
     "./Visualization/Lines/Model.ts",
 
+    "./Visualization/Labels/Atlas.ts",
+    "./Visualization/Labels/Geometry.ts",
+    "./Visualization/Labels/Shaders.ts",
+    "./Visualization/Labels/Material.ts",
+    "./Visualization/Labels/Model.ts",
+
     "./Visualization/Molecule/BallsAndSticks/Model.ts",
     "./Visualization/Molecule/BallsAndSticks/Geometry.ts",
     "./Visualization/Molecule/Cartoons/Geometry.ts",
+    "./Visualization/Molecule/Cartoons/Unit.ts",
     "./Visualization/Molecule/Cartoons/GeometryElements.ts",
     "./Visualization/Molecule/Cartoons/Model.ts",
     "./Visualization/Molecule/Colors.ts",
 
     "./Visualization/Primitive/Geometry.ts",
     "./Visualization/Primitive/Builder.ts",
-
-    "./Visualization/Utils/Palette.ts",
 
     /*******************************************************************
      * BOOTSTRAP
@@ -153,6 +165,9 @@
     "./Bootstrap/Visualization/Molecule/Theme.ts", // must go before the rest in /Molecule?
     "./Bootstrap/Visualization/Molecule/Styles.ts",
     "./Bootstrap/Visualization/Molecule/Model.ts",    
+
+    "./Bootstrap/Visualization/Labels/Model.ts",    
+    "./Bootstrap/Visualization/Labels/Styles.ts",
     
     "./Bootstrap/Visualization/Density/Model.ts",    
     "./Bootstrap/Visualization/Density/Styles.ts", // last because it references others
@@ -164,6 +179,7 @@
     "./Bootstrap/Entity/Cache.ts",    
     "./Bootstrap/Entity/Transformer/Basic.ts", // basic goes 1st
     "./Bootstrap/Entity/Transformer/Molecule.ts",
+    "./Bootstrap/Entity/Transformer/Labels.ts",
     "./Bootstrap/Entity/Transformer/Data.ts",
     "./Bootstrap/Entity/Transformer/Density.ts",
     "./Bootstrap/Entity/Transformer/CoordinateStreaming.ts",
@@ -230,7 +246,8 @@
     "./Plugin/Views/Transform/View.tsx",    
     "./Plugin/Views/Transform/Data.tsx",    
     "./Plugin/Views/Transform/Molecule.tsx",
-    "./Plugin/Views/Transform/Density.tsx",        
+    "./Plugin/Views/Transform/Density.tsx",
+    "./Plugin/Views/Transform/Labels.tsx",        
     
     // VIEW -> CONTEXT
     "./Plugin/Views/Context/Log.tsx",

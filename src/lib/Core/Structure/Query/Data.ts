@@ -2,9 +2,7 @@
  * Copyright (c) 2016 - now David Sehnal, licensed under Apache 2.0, See LICENSE file for more info.
  */
 
-namespace LiteMol.Core.Structure {
-
-    
+namespace LiteMol.Core.Structure {    
     /**
      * The query is a mapping from a context to a sequence of fragments.
      */
@@ -28,8 +26,7 @@ namespace LiteMol.Core.Structure {
          * 
          */
         export class Context {
-            private mask: Context.Mask;
-            private lazyTree: Geometry.SubdivisionTree3D<number>;
+            private lazyLoopup3d: Geometry.Query3D.LookupStructure<number>;
 
             /**
              * Number of atoms in the current context.
@@ -51,11 +48,11 @@ namespace LiteMol.Core.Structure {
             structure: Molecule.Model;
 
             /**
-             * Get a kd-tree for the atoms in the current context.
+             * Get a 3d loopup structure for the atoms in the current context.
              */
-            get tree() {
-                if (!this.lazyTree) this.makeTree();
-                return this.lazyTree;
+            get lookup3d() {
+                if (!this.lazyLoopup3d) this.makeLookup3d();
+                return this.lazyLoopup3d;
             }
             
             /**
@@ -79,29 +76,28 @@ namespace LiteMol.Core.Structure {
              * Create a new context based on the provide structure.
              */
             static ofStructure(structure: Molecule.Model) {
-                return new Context(structure, Context.Mask.ofStructure(structure));
+                return new Context(structure, Utils.Mask.ofStructure(structure));
             }
 
             /**
              * Create a new context from a sequence of fragments.
              */
             static ofFragments(seq: FragmentSeq) {
-                return new Context(seq.context.structure, Context.Mask.ofFragments(seq));
+                return new Context(seq.context.structure, Utils.Mask.ofFragments(seq));
             }
             
             /**
              * Create a new context from a sequence of fragments.
              */
             static ofAtomIndices(structure: Molecule.Model, atomIndices: number[]) {                
-                return new Context(structure, Context.Mask.ofIndices(structure, atomIndices));
+                return new Context(structure, Utils.Mask.ofIndices(structure.data.atoms.count, atomIndices));
             }
 
-            constructor(structure: Molecule.Model, mask: Context.Mask) {
+            constructor(structure: Molecule.Model, public readonly mask: Utils.Mask) {
                 this.structure = structure;
-                this.mask = mask;
             }
 
-            private makeTree() {
+            private makeLookup3d() {
                 let data = new Int32Array(this.mask.size),
                     dataCount = 0,
                     {x, y, z} = this.structure.positions;
@@ -109,87 +105,11 @@ namespace LiteMol.Core.Structure {
                 for (let i = 0, _b = this.structure.positions.count; i < _b; i++) {
                     if (this.mask.has(i)) data[dataCount++] = i;
                 }
-                this.lazyTree = Geometry.SubdivisionTree3D.create<number>(<any>data, (i, add) => add(x[i], y[i], z[i]));
+
+                const inputData = Geometry.Query3D.createInputData(data as any as number[], (i, add) => add(x[i], y[i], z[i]));
+                this.lazyLoopup3d = Geometry.Query3D.createSpatialHash(inputData);
             }
         }
-        
-        export namespace Context {
-            
-            /**
-             * Represents the atoms in the context.
-             */
-            export interface Mask {
-                size: number;
-                has(i: number): boolean;
-            }
-            
-            export module Mask {            
-                class BitMask implements Mask {                
-                    has(i: number) { return <any>this.mask[i] }                
-                    constructor(private mask: Int8Array, public size: number) {}
-                }
-                
-                class AllMask implements Mask {
-                    has(i: number) { return true; }
-                    constructor(public size: number) { }
-                }
-                
-                export function ofStructure(structure: Molecule.Model): Mask {
-                    return new AllMask(structure.data.atoms.count);
-                }
-                        
-                export function ofIndices(structure: Molecule.Model, atomIndices: number[]): Mask {
-                    let f = atomIndices.length / structure.data.atoms.count;
-                    if (f < 0.25) {
-                        let set = Utils.FastSet.create();
-                        for (let i of atomIndices) set.add(i);
-                        return set;
-                    }
-                    
-                    let mask = new Int8Array(structure.data.atoms.count);                
-                    for (let i of atomIndices) {
-                        mask[i] = 1;
-                    }
-                    return new BitMask(mask, atomIndices.length);
-                }
-                
-                export function ofFragments(seq: FragmentSeq): Mask {
-                    let sizeEstimate = 0;
-                    
-                    for (let f of seq.fragments) {
-                        sizeEstimate += f.atomCount;
-                    }
-                    
-                    let count = seq.context.structure.data.atoms.count;
-                    
-                    if (sizeEstimate / count < 0.25) {
-                        // create set;
-                        let mask = Utils.FastSet.create();
-                        for (let f of seq.fragments) {
-                            for (let i of f.atomIndices) {
-                                mask.add(i);
-                            }
-                        }
-                        return mask;
-                    } else {                    
-                        let mask = new Int8Array(count);
-                                                
-                        for (let f of seq.fragments) {
-                            for (let i of f.atomIndices) {
-                                mask[i] = 1;
-                            }
-                        }
-
-                        let size = 0;
-                        for (let i = 0; i < count; i++) {
-                            if (mask[i] !== 0) size++;
-                        }
-                        return new BitMask(mask, size);
-                    }
-                }
-            }
-        }
-
 
         /**
          * The basic element of the query language. 
@@ -384,7 +304,7 @@ namespace LiteMol.Core.Structure {
              * Assumes the set is in the given context's mask.
              * Assumes the array is sorted.
              */
-            static ofArray(context: Context, tag: number, atomIndices: Int32Array) {
+            static ofArray(context: Context, tag: number, atomIndices: Int32Array | number[]) {
                 return new Fragment(context, tag, <any>atomIndices);
             }
 

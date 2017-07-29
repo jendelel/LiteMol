@@ -1,4 +1,11 @@
-﻿# 1.3.6
+﻿# 1.4.1
+* Fixed a bug in creating nested selections.
+* Autoamtic mol. surface density is now based on volume rather than count.
+
+# 1.4.0
+* Added support for labels.
+
+# 1.3.6
 * Fixed rainbow color theme to work correctly on out-of-order chains and entities.
 
 # 1.3.5

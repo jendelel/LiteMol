@@ -500,7 +500,6 @@ namespace LiteMol.Core.Formats.Molecule.mmCIF {
     }
 
     function updateSSIndicesAndFilterEmpty(elements: Structure.SecondaryStructureElement[], structure: StructureWrapper) {
-
         let residues = structure.residues,
             count = residues.count,
             asymId = residues.asymId, seqNumber = residues.seqNumber, insCode = residues.insCode,
@@ -582,7 +581,6 @@ namespace LiteMol.Core.Formats.Molecule.mmCIF {
     }
 
     function getSecondaryStructureInfo(data: CIF.DataBlock, atoms: Structure.AtomTable, structure: StructureWrapper): Structure.SecondaryStructureElement[] {
-
         let input: Structure.SecondaryStructureElement[] = [],
             elements: Structure.SecondaryStructureElement[] = [];
 
@@ -690,6 +688,139 @@ namespace LiteMol.Core.Formats.Molecule.mmCIF {
         }
 
         return ssIndex;
+    }
+
+    function findResidueIndexByLabel(structure: StructureWrapper, asymId: string, seqNumber: number, insCode: string | null) {
+        const { asymId: _asymId, residueStartIndex, residueEndIndex, count: cCount } = structure.chains;
+        const { seqNumber: _seqNumber, insCode: _insCode } = structure.residues;
+
+        for (let cI = 0; cI < cCount; cI++) {
+            if (_asymId[cI] !== asymId) continue;
+            for (let rI = residueStartIndex[cI], _r = residueEndIndex[cI]; rI < _r; rI++) {
+                if (_seqNumber[rI] === seqNumber && _insCode[rI] === insCode) return rI;
+            }
+        }
+        return -1;
+    }
+
+    function findAtomIndexByLabelName(atoms: Structure.AtomTable, structure: StructureWrapper, residueIndex: number, atomName: string, altLoc: string | null) {
+        const { atomStartIndex, atomEndIndex } = structure.residues;
+        const { name: _atomName, altLoc: _altLoc } = atoms;
+
+        for (let i = atomStartIndex[residueIndex], _i = atomEndIndex[residueIndex]; i <= _i; i++) {
+            if (_atomName[i] === atomName && _altLoc[i] === altLoc) return i;
+        }
+        return -1;
+    }
+
+    function getModRes(data: CIF.DataBlock): Structure.ModifiedResidueTable | undefined {
+        const cat = data.getCategory('_pdbx_struct_mod_residue');
+        if (!cat) return void 0;
+
+        const table = Utils.DataTable.ofDefinition(Structure.Tables.ModifiedResidues, cat.rowCount);
+        const label_asym_id = cat.getColumn('label_asym_id');
+        const label_seq_id = cat.getColumn('label_seq_id');
+        const PDB_ins_code = cat.getColumn('PDB_ins_code');
+        const parent_comp_id = cat.getColumn('parent_comp_id');
+        const _details = cat.getColumn('details');
+
+        const { asymId, seqNumber, insCode, parent, details } = table;
+
+        for (let i = 0, __i = cat.rowCount; i < __i; i++) {
+            asymId[i] = label_asym_id.getString(i)!;
+            seqNumber[i] = label_seq_id.getInteger(i)!;
+            insCode[i] = PDB_ins_code.getString(i);
+            parent[i] = parent_comp_id.getString(i)!;
+            details[i] = _details.getString(i);
+        }
+
+        return table;
+    }
+
+    export type StructConnType = 
+          'covale'
+        | 'covale_base'
+        | 'covale_phosphate'
+        | 'covale_sugar'
+        | 'disulf'
+        | 'hydrog'
+        | 'metalc'
+        | 'mismat'
+        | 'modres'
+        | 'saltbr'
+
+    function getStructConn(data: CIF.DataBlock, atoms: Structure.AtomTable, structure: StructureWrapper): Structure.StructConn | undefined {
+        const cat = data.getCategory('_struct_conn');
+        if (!cat) return void 0;
+
+        const _idCols = (i: number) => ({
+            label_asym_id: cat.getColumn('ptnr' + i + '_label_asym_id'),
+            label_seq_id: cat.getColumn('ptnr' + i + '_label_seq_id'),
+            label_atom_id: cat.getColumn('ptnr' + i + '_label_atom_id'),
+            label_alt_id: cat.getColumn('pdbx_ptnr' + i + '_label_alt_id'),
+            ins_code: cat.getColumn('pdbx_ptnr' + i + '_PDB_ins_code'),
+            symmetry: cat.getColumn('ptnr' + i + '_symmetry')
+        });
+
+        const conn_type_id = cat.getColumn('conn_type_id');        
+        const pdbx_dist_value = cat.getColumn('pdbx_dist_value');
+        const pdbx_value_order = cat.getColumn('pdbx_value_order');
+        const p1 = _idCols(1);
+        const p2 = _idCols(2);
+        const p3 = _idCols(3);
+
+        const _p = (row: number, ps: typeof p1) => {
+            if (ps.label_asym_id.getValuePresence(row) !== CIF.ValuePresence.Present) return void 0;
+            const residueIndex = findResidueIndexByLabel(structure, ps.label_asym_id.getString(row)!, ps.label_seq_id.getInteger(row), ps.ins_code.getString(row));
+            if (residueIndex < 0) return void 0;
+            const atomIndex = findAtomIndexByLabelName(atoms, structure, residueIndex, ps.label_atom_id.getString(row)!, ps.label_alt_id.getString(row));
+            if (atomIndex < 0) return void 0;
+            return { residueIndex, atomIndex, symmetry: ps.symmetry.getString(row) || '1_555' };
+        }
+
+        const _ps = (row: number) => {
+            const ret = [];
+            let p = _p(row, p1);
+            if (p) ret.push(p);
+            p = _p(row, p2);
+            if (p) ret.push(p);
+            p = _p(row, p3);
+            if (p) ret.push(p);
+            return ret;
+        }
+
+        const entries: Structure.StructConn.Entry[] = [];
+        for (let i = 0; i < cat.rowCount; i++) {
+            const partners = _ps(i);
+            if (partners.length < 2) continue;
+
+            const type = conn_type_id.getString(i)! as StructConnType;
+            const orderType = (pdbx_value_order.getString(i) || '').toLowerCase();
+            let bondType = Structure.BondType.Unknown;
+
+            switch (orderType) {
+                case 'sing': bondType = Structure.BondType.Single; break; 
+                case 'doub': bondType = Structure.BondType.Double; break;
+                case 'trip': bondType = Structure.BondType.Triple; break;
+                case 'quad': bondType = Structure.BondType.Aromatic; break;
+            }
+
+            switch (type) {
+                case 'disulf': bondType = Structure.BondType.DisulfideBridge; break; 
+                case 'hydrog': bondType = Structure.BondType.Hydrogen; break; 
+                case 'metalc': bondType = Structure.BondType.Metallic; break; 
+                //case 'mismat': bondType = Structure.BondType.Single; break; 
+                case 'saltbr': bondType = Structure.BondType.Ion; break; 
+            }        
+
+            entries.push({ 
+                bondType,
+                distance: pdbx_dist_value.getFloat(i), 
+                partners
+            });
+        }
+
+        return new Structure.StructConn(entries);
     }
 
     function parseOperatorList(value: string): string[][] {
@@ -847,17 +978,17 @@ namespace LiteMol.Core.Formats.Molecule.mmCIF {
                 entry = info.newEntry(id);
             }
 
-            let t: Structure.Bond.Type;
+            let t: Structure.BondType;
 
             switch (order.toLowerCase()) {
-                case 'sing': t = Structure.Bond.Type.Single; break;
+                case 'sing': t = Structure.BondType.Single; break;
                 case 'doub':
                 case 'delo':
-                    t = Structure.Bond.Type.Double;
+                    t = Structure.BondType.Double;
                     break;
-                case 'trip': t = Structure.Bond.Type.Triple; break;
-                case 'quad': t = Structure.Bond.Type.Aromatic; break;
-                default: t = Structure.Bond.Type.Unknown; break;
+                case 'trip': t = Structure.BondType.Triple; break;
+                case 'quad': t = Structure.BondType.Aromatic; break;
+                default: t = Structure.BondType.Unknown; break;
             }
 
             entry.add(nameA, nameB, t);
@@ -890,8 +1021,10 @@ namespace LiteMol.Core.Formats.Molecule.mmCIF {
                     chains: structure.chains,
                     entities: structure.entities,
                     bonds: { 
+                        structConn: getStructConn(data, atoms, structure),
                         component: getComponentBonds(data.getCategory('_chem_comp_bond'))
                     },
+                    modifiedResidues: getModRes(data),
                     secondaryStructure: ss,
                     symmetryInfo: getSymmetryInfo(data),
                     assemblyInfo: getAssemblyInfo(data),

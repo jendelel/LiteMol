@@ -184,7 +184,6 @@ namespace LiteMol.Visualization {
             this.renderer.setClearColor(new THREE.Color(options.clearColor!.r, options.clearColor!.g, options.clearColor!.b));
             this.renderer.autoClear = true;
             this.renderer.sortObjects = false;
-            
 
             this.mouseInfo = new MouseInfo(this.renderState, this.renderer.domElement);
 
@@ -196,7 +195,7 @@ namespace LiteMol.Visualization {
 
             this.parentElement.appendChild(this.renderer.domElement);
 
-            let delayedResizeHandler = Core.Utils.debounce(() => this.handleResize(), 100),
+            let delayedResizeHandler = Core.Utils.debounce(() => this.handleResize(), 150),
                 resizeHandler = () => {
                     this.renderState.resizing = true;
                     delayedResizeHandler();

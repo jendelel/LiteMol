@@ -1,3 +1,22 @@
+# 1.6.1
+* Added "particle coloring" extension.
+
+# 1.6.0
+* Better show interactions between different components of a molecule.
+* Better default representation of molecules.
+* Added 3D SNFG carbohydrate representation.
+
+# 1.5.1
+* Support for _struct_conn mmCIF category.
+* Show metallic bonds in balls and sticks models.
+
+# 1.5.0
+* Support for labels.
+* Default theme changed to light.
+
+# 1.4.4
+* Updated DensityServer mapping.
+
 # 1.4.3
 * Updated PDBe Validation Report support to the latest version of the API.
 

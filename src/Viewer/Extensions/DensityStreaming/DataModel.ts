@@ -9,16 +9,17 @@
 namespace LiteMol.Extensions.DensityStreaming {
     'use strict';
 
-    export type FieldSource = 'X-ray' | 'EMD'
+    export type FieldSource = 'X-ray' | 'EM'
     export type DataType = 'EM' | '2FO-FC' | 'FO-FC'
-    export type FieldType = '2Fo-Fc' | 'Fo-Fc(-ve)' | 'Fo-Fc(+ve)' | 'EMD'
-    export const FieldSources: FieldSource[] = ['X-ray', 'EMD' ]  
+    export type FieldType = '2Fo-Fc' | 'Fo-Fc(-ve)' | 'Fo-Fc(+ve)' | 'EM'
+    export const FieldSources: FieldSource[] = [ 'X-ray', 'EM' ]  
 
     export interface SetupParams {
         server: string,
         id: string,
         source: FieldSource,
-        initialStreamingParams?: Partial<CreateStreamingParams>
+        initialStreamingParams?: Partial<CreateStreamingParams>,
+        streamingEntityRef?: string
     }
 
     export type CreateStreamingParams = {
@@ -33,7 +34,7 @@ namespace LiteMol.Extensions.DensityStreaming {
         isoValueType: Bootstrap.Visualization.Density.IsoValueType,
         isoValues: { [F in FieldType]?: number },
         showEverythingExtent: number,
-        // do not use /cell query on EMD
+        // do not use /cell query on EM
         forceBox?: boolean
     } & { [F in FieldType]?: Bootstrap.Visualization.Density.Style }
 

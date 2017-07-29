@@ -161,7 +161,7 @@ namespace LiteMol.Bootstrap.Interactivity.Molecule {
     export function formatInfoShort(info: SelectionInfo | undefined) {
         if (!info || !info.atoms.length) return ``;
         if (info.atoms.length === 1) {
-            return `<span><b>${formatAtomShort(info.atoms[0])}<b> ${formatMolecule(info)}</span>`;
+            return `<span><b>${formatAtomShort(info.atoms[0])}</b> ${formatMolecule(info)}</span>`;
         } else if (info.residues.length === 1) {
             return `<span><b>${formatResidue(info.residues[0])}</b> ${formatMolecule(info)}</span>`;
         } else {
@@ -170,7 +170,8 @@ namespace LiteMol.Bootstrap.Interactivity.Molecule {
     }
     
     export function isMoleculeModelInteractivity(info: Info): info is Info.Selection {
-        if (Interactivity.isEmpty(info)) return false;        
+        if (Interactivity.isEmpty(info)) return false;
+        if (info.source.type.info.typeClass === Entity.VisualClass && info.source.type !== Entity.Molecule.Visual) return false;
         let modelOrSelection = Utils.Molecule.findModelOrSelection(info.source);
         if (!modelOrSelection) return false;
         return true;

@@ -49,6 +49,7 @@ namespace LiteMol.Visualization {
                 normalBuffer = new Float32Array(bufferSize),
                 indexBuffer = new Uint32Array(source.faces.length * 3),
                 normals = Array(source.vertices.length);
+            
             for (let i = 0; i < source.faces.length; i++) {
                 let f = source.faces[i];
 
@@ -80,6 +81,18 @@ namespace LiteMol.Visualization {
                 triangleIndices: indexBuffer,
                 triangleCount: source.faces.length,
                 normals: normalBuffer 
+            };
+        }
+
+        static toRawGeometry(source: THREE.Geometry): Geometry.RawGeometry {
+            const { vertices, vertexCount, triangleIndices: indices, triangleCount: indexCount, normals } = GeometryHelper.toSurface(source);
+            return {
+                vertices,
+                vertexCount,
+                indices,
+                indexCount,
+                normals,
+                elementSize: 3
             };
         }
         

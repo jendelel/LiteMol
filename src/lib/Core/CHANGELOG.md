@@ -1,4 +1,26 @@
-﻿# 3.1.2
+﻿# 3.2.1
+* Parse _pdbx_struct_mod_residue from mmCIF.
+
+# 3.2.0
+* Fixed bug in CIFTools.
+* Add more robust bond computation.
+
+# 3.1.6
+* Added support for _struct_conn mmCIF category.
+* Refactored geometry 3D search API and added spatial hash option.
+
+# 3.1.5
+* Renamed Matrix4.empty and Vector4.create to Matrix4/Vector4.zero.
+* Added more linear algebra functions.
+* Removed ObjectVec3 from linear algebra.
+
+# 3.1.4
+* Added "allAtoms" query.
+
+# 3.1.3
+* Fixed a issue in the PDB parser where ATOM/HETATM records without temperature factor would not be parsed.
+
+# 3.1.2
 * Fixed an assembly generation issue.
 
 # 3.1.1

@@ -7,12 +7,17 @@ namespace LiteMol.Visualization.Molecule.Cartoons.Geometry {
         geometry: THREE.BufferGeometry = <any>void 0;
         pickGeometry: THREE.BufferGeometry = <any>void 0;
 
+        gapsGeometry: THREE.BufferGeometry | undefined = void 0;
+
         vertexMap: Selection.VertexMap = <any>void 0;
         vertexStateBuffer: THREE.BufferAttribute = <any>void 0;
         
         dispose() {
             this.geometry.dispose();
             this.pickGeometry.dispose();
+            if (this.gapsGeometry) {
+                this.gapsGeometry.dispose();
+            }
         }
     }
     
@@ -44,7 +49,7 @@ namespace LiteMol.Visualization.Molecule.Cartoons.Geometry {
         linearSegments: number,
         parameters: any,
         isTrace: boolean,
-        computation: Core.Computation.Context): LiteMol.Promise<Data> {
+        computation: Core.Computation.Context): Promise<Data> {
         
         let params = <CartoonsGeometryParams>Core.Utils.extend({}, parameters, CartoonsGeometryParams.Default);
         let ctx: Context = {

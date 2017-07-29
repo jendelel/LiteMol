@@ -176,10 +176,10 @@ namespace LiteMol.Visualization.Surface {
         }
     }
 
-    function createFullPickGeometry(ctx: Context) {
+    function createFullPickGeometry(attr: BasicAttributes, ctx: Context) {
         let pickGeometry = new THREE.BufferGeometry();
-        pickGeometry.addAttribute('position', new THREE.BufferAttribute(ctx.data.vertices, 3));
-        pickGeometry.addAttribute('index', new THREE.BufferAttribute(ctx.data.triangleIndices, 1));
+        pickGeometry.addAttribute('position', attr.position);
+        pickGeometry.addAttribute('index', attr.index);
         pickGeometry.addAttribute('pColor', new THREE.BufferAttribute(ctx.pickColorBuffer, 4));
         ctx.geom.pickGeometry = pickGeometry;
 
@@ -190,10 +190,10 @@ namespace LiteMol.Visualization.Surface {
         ctx.geom.pickPlatesGeometry = pickGeometry;
     }
 
-    function createPickGeometry(ctx: Context) {
+    function createPickGeometry(attr: BasicAttributes, ctx: Context) {
         let pickGeometry = new THREE.BufferGeometry();
-        pickGeometry.addAttribute('position', new THREE.BufferAttribute(ctx.data.vertices, 3));
-        pickGeometry.addAttribute('index', new THREE.BufferAttribute(ChunkedArray.compact(ctx.pickTris!), 1));
+        pickGeometry.addAttribute('position', attr.position);
+        pickGeometry.addAttribute('index', attr.index);
         pickGeometry.addAttribute('pColor', new THREE.BufferAttribute(ctx.pickColorBuffer, 4));
         ctx.geom.pickGeometry = pickGeometry;
 
@@ -217,7 +217,7 @@ namespace LiteMol.Visualization.Surface {
     function buildWireframeIndices(ctx: Context) {
         let tris = ctx.data.triangleIndices;
         let edges = ChunkedArray.create<number>(size => new Uint32Array(size), (1.5 * ctx.triCount) | 0, 2);
-        let includedEdges = Core.Utils.FastSet.create();
+        let includedEdges = Core.Utils.FastSet.create<number>();
 
         for (let i = 0, _b = tris.length; i < _b; i += 3) {
             let a = tris[i], b = tris[i + 1], c = tris[i + 2];
@@ -228,16 +228,24 @@ namespace LiteMol.Visualization.Surface {
         return new THREE.BufferAttribute(ChunkedArray.compact(edges), 1);
     }
 
-    function createGeometry(isWireframe: boolean, ctx: Context) {
+    type BasicAttributes = { position: THREE.BufferAttribute, index: THREE.BufferAttribute }
+    function makeBasicAttributes(ctx: Context): BasicAttributes {
+        return {
+            position: new THREE.BufferAttribute(ctx.data.vertices, 3),
+            index: new THREE.BufferAttribute(ctx.data.triangleIndices, 1)
+        };
+    }
+
+    function createGeometry(attr: BasicAttributes, isWireframe: boolean, ctx: Context) {
         let geometry = new THREE.BufferGeometry();
-        geometry.addAttribute('position', new THREE.BufferAttribute(ctx.data.vertices, 3));
+        geometry.addAttribute('position', attr.position);
         geometry.addAttribute('normal', new THREE.BufferAttribute(ctx.data.normals, 3));
-        geometry.addAttribute('color', new THREE.BufferAttribute(new Float32Array(3 * ctx.data.vertices.length), 3));
+        geometry.addAttribute('color', new THREE.BufferAttribute(new Float32Array(ctx.data.vertices.length), 3));
 
         if (isWireframe) {
             geometry.addAttribute('index', buildWireframeIndices(ctx));
         } else {
-            geometry.addAttribute('index', new THREE.BufferAttribute(ctx.data.triangleIndices, 1));
+            geometry.addAttribute('index', attr.index);
         }
 
         ctx.geom.geometry = geometry;
@@ -245,12 +253,12 @@ namespace LiteMol.Visualization.Surface {
         geometry.addAttribute('vState', ctx.geom.vertexStateBuffer);
     }
 
-    async function computePickGeometry(ctx: Context) {
+    async function computePickGeometry(attr: BasicAttributes, ctx: Context) {
         await ctx.computation.updateProgress('Creating selection geometry...');
 
         ctx.pickColorBuffer = new Float32Array(ctx.vertexCount * 4);
         if (!ctx.data.annotation) {
-            createFullPickGeometry(ctx);
+            createFullPickGeometry(attr, ctx);
             return;
         } else {
             assignPickColors(ctx);
@@ -260,11 +268,11 @@ namespace LiteMol.Visualization.Surface {
             ctx.platesVertexCount = 0;
 
             await computePickPlatesChunks(ctx)
-            createPickGeometry(ctx);
+            createPickGeometry(attr, ctx);
         }
     }
 
-    export async function buildGeometry(data: Data, computation: Core.Computation.Context, isWireframe: boolean): LiteMol.Promise<Geometry> {
+    export async function buildGeometry(data: Data, computation: Core.Computation.Context, isWireframe: boolean): Promise<Geometry> {
         let ctx: Context = {
             data,
             computation,
@@ -277,10 +285,12 @@ namespace LiteMol.Visualization.Surface {
         await Core.Geometry.Surface.computeNormals(data).run(computation);
         await Core.Geometry.Surface.computeBoundingSphere(data).run(computation);
 
-        await computeVertexMap(ctx);
-        await computePickGeometry(ctx);
+        const attr = makeBasicAttributes(ctx);
 
-        createGeometry(isWireframe, ctx);
+        await computeVertexMap(ctx);
+        await computePickGeometry(attr, ctx);
+
+        createGeometry(attr, isWireframe, ctx);
         ctx.geom.vertexToElementMap = ctx.data.annotation!;
         return ctx.geom;
     }
@@ -295,9 +305,6 @@ namespace LiteMol.Visualization.Surface {
         pickPlatesGeometry: THREE.BufferGeometry = <any>void 0;
 
         vertexStateBuffer: THREE.BufferAttribute = <any>void 0;
-
-        center: THREE.Vector3 = new THREE.Vector3(0, 0, 0);
-        radius: number = 0;
 
         dispose() {
             this.geometry.dispose();

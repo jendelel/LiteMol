@@ -5,6 +5,30 @@ This a global changelog that outlines overal changes in LiteMol.
 Each component also has its separate changelog 
 ([Core](src/lib/Core/CHANGELOG.md), [Visualization](src/lib/Visualization/CHANGELOG.md), [Bootstrap](src/lib/Bootstrap/CHANGELOG.md), [Plugin](src/lib/Plugin/CHANGELOG.md), [Viewer](src/Viewer/CHANGELOG.md)).
 
+
+2.4.0-preview
+-----------
+
+* Better show interactions between different components of a molecule.
+* Better default representation of molecules.
+* Added 3D SNFG carbohydrate representation.
+* Added "particle coloring" that colors atoms based on the distance to the centroid of the molecule.
+
+2.3.1-preview
+-----------
+
+* Support for _struct_conn mmCIF category.
+* Better bond computation based on distances.
+* Show metallic bond in balls and sticks models.
+* Added dashed lines to cartoon models to indicated gaps in sequence.
+
+2.3.0-preview
+-----------
+
+* Added support for labels in 3D scene.
+* Added more 3D primitives.
+* Removed "Object 3D vectors" in favor of array based vectors. (Should only break user code that uses 3D primitives)
+
 2.2.1-preview
 -----------
 

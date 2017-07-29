@@ -4,6 +4,7 @@
     "noImplicitAny": true,
     "noEmitOnError": true,
     "removeComments": false,
+    "alwaysStrict": true,
     "sourceMap": false,
     "declaration": true,
     "strictNullChecks": true,
@@ -15,8 +16,8 @@
     "jsx": "react",
     "module": "none",
     "types": [],
-    "skipDefaultLibCheck": true,
-    "skipLibCheck": true,
+    //"skipDefaultLibCheck": true,
+    //"skipLibCheck": true,
     "out": "LiteMol-core-temp.js"
   },
   "files": [
@@ -49,13 +50,16 @@
     "./Core/Formats/Density/Formats.ts",
     // GEOMETRY
     "./Core/Geometry/LinearAlgebra.ts",
-    "./Core/Geometry/SubdivisionTree.ts",
     "./Core/Geometry/Surface.ts",
+    "./Core/Geometry/Query3D/Common.ts",
+    "./Core/Geometry/Query3D/SubdivisionTree.ts",
+    "./Core/Geometry/Query3D/SpatialHash.ts",
     "./Core/Geometry/MarchingCubes/MarchingCubes.ts",
     "./Core/Geometry/MarchingCubes/Tables.ts",
     "./Core/Geometry/MolecularSurface/MolecularIsoSurface.ts",
     // STRUCTURE
     "./Core/Structure/Molecule.ts",
+    "./Core/Structure/Bonds.ts",
     "./Core/Structure/Spacegroups.ts",
     "./Core/Structure/Symmetry.ts",
     "./Core/Structure/Query/Data.ts",

@@ -14,6 +14,7 @@ namespace LiteMol.Core.Structure.Query {
         inside(where: Source): Builder;
         intersectWith(where: Source): Builder;
         flatten(selector: (f: Fragment) => FragmentSeq): Builder;
+        except(toRemove: Source): Builder;
     }
     
     export namespace Builder {
@@ -54,6 +55,7 @@ namespace LiteMol.Core.Structure.Query {
     export interface AsymIdSchema extends EntityIdSchema { asymId?: string; authAsymId?: string; }
     export interface ResidueIdSchema extends AsymIdSchema { name?: string; seqNumber?: number; authName?: string; authSeqNumber?: number; insCode?: string | null; }
     
+    export function allAtoms() { return Builder.build(() => Compiler.compileAllAtoms()); }
     export function atomsByElement(...elements: string[]) { return Builder.build(() => Compiler.compileAtoms(elements, m => m.data.atoms.elementSymbol)); }
     export function atomsByName(...names: string[]) { return Builder.build(() => Compiler.compileAtoms(names, m => m.data.atoms.name)); }
     export function atomsById(...ids: number[]) { return Builder.build(() => Compiler.compileAtoms(ids, m => m.data.atoms.id)); }  
@@ -101,6 +103,9 @@ namespace LiteMol.Core.Structure.Query {
 
     Builder.registerModifier('flatten', flatten);    
     export function flatten(what: Source, selector: (f: Fragment) => FragmentSeq) { return Builder.build(() => Compiler.compileFlatten(what, selector)); }
+
+    Builder.registerModifier('except', except);    
+    export function except(what: Source, toRemove: Source) { return Builder.build(() => Compiler.compileExcept(what, toRemove)); }
 
     /**
      * Shortcuts
@@ -156,6 +161,18 @@ namespace LiteMol.Core.Structure.Query {
             };
         }
 
+        export function compileAllAtoms() {
+            return (ctx: Context) => {
+                const fragments = new FragmentSeqBuilder(ctx);
+                
+                for (let i = 0, _b = ctx.structure.data.atoms.count; i < _b; i++) {
+                    if (ctx.hasAtom(i)) fragments.add(Fragment.ofIndex(ctx, i));
+                }
+
+                return fragments.getSeq();
+            };
+        } 
+
         export function compileAtoms(elements: string[] | number[], sel: (model: Structure.Molecule.Model) => string[] | number[]) {
             return (ctx: Context) => {
 
@@ -180,6 +197,7 @@ namespace LiteMol.Core.Structure.Query {
                 }
                 
                 if (!count) return FragmentSeq.empty(ctx);
+                if (count === indices.length) return new FragmentSeq(ctx, [Fragment.ofArray(ctx, indices[0], indices)]);
                 
                 let offset = 0;
                 let f = new Int32Array(count);
@@ -389,7 +407,7 @@ namespace LiteMol.Core.Structure.Query {
             };
         }
 
-        function narrowFragment(ctx: Context, f: Fragment, m: Context.Mask) {
+        function narrowFragment(ctx: Context, f: Fragment, m: Utils.Mask) {
             let count = 0;
             for (let i of f.atomIndices) {
                 if (m.has(i)) count++;
@@ -409,7 +427,7 @@ namespace LiteMol.Core.Structure.Query {
             let _where = Builder.toQuery(where)
             return (ctx: Context) => {
                 let fs = _what(ctx);
-                let map = Context.Mask.ofFragments(_where(ctx));
+                let map = Utils.Mask.ofFragments(_where(ctx));
                 let ret = new FragmentSeqBuilder(ctx);
 
                 for (let f of fs.fragments) {
@@ -440,7 +458,7 @@ namespace LiteMol.Core.Structure.Query {
         export function compileComplement(what: Source): Query {
             let _what = Builder.toQuery(what);
             return (ctx: Context) => {
-                let mask = Context.Mask.ofFragments(_what(ctx)),
+                let mask = Utils.Mask.ofFragments(_what(ctx)),
                     count = 0, offset = 0;
 
                 for (let i = 0, _b = ctx.structure.data.atoms.count; i < _b; i++) {
@@ -479,7 +497,7 @@ namespace LiteMol.Core.Structure.Query {
             let _what = Builder.toQuery(what);
             return (ctx: Context) => {
                 let src = _what(ctx).fragments,
-                    indices = Utils.FastSet.create(),
+                    indices = Utils.FastSet.create<number>(),
                     j = 0, atoms: number[];
 
                 for (let i = 0; i < src.length; i++) {
@@ -531,28 +549,25 @@ namespace LiteMol.Core.Structure.Query {
         }
 
         export function compileAmbientResidues(where: Source, radius: number) {
-
             let _where = Builder.toQuery(where);
             return (ctx: Context) => {
 
                 let src = _where(ctx),
-                    tree = ctx.tree,
-                    radiusCtx = Geometry.SubdivisionTree3D.createContextRadius(tree, radius, false),
-                    buffer = radiusCtx.buffer, 
+                    nearest = ctx.lookup3d(),
                     ret = new HashFragmentSeqBuilder(ctx),
                     { x, y, z } = ctx.structure.positions,
                     residueIndex = ctx.structure.data.atoms.residueIndex,
-                    atomStart = ctx.structure.data.residues.atomStartIndex, atomEnd = ctx.structure.data.residues.atomEndIndex, 
-                    treeData = tree.data;
+                    atomStart = ctx.structure.data.residues.atomStartIndex, atomEnd = ctx.structure.data.residues.atomEndIndex;
                 
                 for (let f of src.fragments) {
                     let residues = Utils.FastSet.create<number>();
                     for (let i of f.atomIndices) {
                         residues.add(residueIndex[i]);
-                        radiusCtx.nearest(x[i], y[i], z[i], radius);
+                        
+                        const { elements, count } = nearest(x[i], y[i], z[i], radius);
 
-                        for (let j = 0, _l = buffer.count; j < _l; j++) {
-                            residues.add(residueIndex[treeData[buffer.indices[j]]]);
+                        for (let j = 0; j < count; j++) {
+                            residues.add(residueIndex[elements[j]]);
                         }
                     }
                     
@@ -622,6 +637,30 @@ namespace LiteMol.Core.Structure.Query {
                     for (let x of xs.fragments) {
                         ret.add(x);
                     }
+                }
+                return ret.getSeq();
+            }            
+        }
+
+        export function compileExcept(what: Source, toRemove: Source) {
+            const _what = Builder.toQuery(what);
+            const _toRemove = Builder.toQuery(toRemove);
+            return (ctx: Context) => {
+                const fs = _what(ctx);
+                const mask = Utils.Mask.ofFragments(_toRemove(ctx));
+                const ret = new HashFragmentSeqBuilder(ctx);
+                for (let f of fs.fragments) {
+                    let size = 0;
+                    for (const i of f.atomIndices) {
+                        if (!mask.has(i)) size++;
+                    }
+                    if (!size) continue;
+                    const indices = new Int32Array(size);
+                    let offset = 0;
+                    for (const i of f.atomIndices) {
+                        if (!mask.has(i)) indices[offset++] = i;
+                    }
+                    ret.add(Fragment.ofArray(ctx, indices[0], indices));
                 }
                 return ret.getSeq();
             }            

@@ -12,6 +12,10 @@ namespace LiteMol.Viewer.Examples {
             name: 'Zika Virus + Cryo-EM Map',
             provider: Zika
         },
+        '5va1-cryo-em': {
+            name: 'Open Human Ether-a-go-go-Related K(+) Channel hERG + Cryo-EM Map',
+            provider: _5va1_cryo_em
+        },
         '3a4x-lig': {
             name: 'PDB ID 3A4X Ligand Validation',
             provider: LigandInteraction_3a4x
@@ -51,21 +55,27 @@ namespace LiteMol.Viewer.Examples {
         if (document.body.clientWidth < 825) plugin.setLayoutState({ hideControls: true });
     }
 
-    function unsubscribeOnDelete(plugin: Plugin.Controller, subProvider: () => { dispose: () => void }, ref: string) {
+    function unsubscribeOnDelete(plugin: Plugin.Controller, subProvider: () => { dispose: () => void }, ref: string, extraCall?: () => void) {
         let sub = subProvider();
         let del = plugin.subscribe(Bootstrap.Event.Tree.NodeRemoved, e => {
             if (!del || !sub || e.data.ref !== ref) return;
             sub.dispose();
-            sub = void 0 as any;
+            sub = void 0 as any;            
             if (del) {
                 del.dispose();
                 del = void 0 as any;
             }
+            if (extraCall) extraCall();
         });
     }
 
-    export function Zika(plugin: Plugin.Controller) {
-        LiteMol.Bootstrap.Behaviour.SuppressCreateVisualWhenModelIsAdded = true;
+    function suppressCreateModel(supp: boolean) {
+        Extensions.ComplexReprensetation.Transforms.SuppressCreateVisualWhenModelIsAdded = supp;
+        LiteMol.Bootstrap.Behaviour.SuppressCreateVisualWhenModelIsAdded = supp;
+    }
+
+    function Zika(plugin: Plugin.Controller) {
+        suppressCreateModel(true);
         hideControlsIfNarrow(plugin);
 
         const molecule = plugin.createTransform()
@@ -77,8 +87,9 @@ namespace LiteMol.Viewer.Examples {
                 .add('molecule', Transformer.Molecule.CreateModel, { modelIndex: 0 })
                 .then(Transformer.Molecule.CreateAssembly, { name: '1' })
                 .then(Transformer.Molecule.CreateMacromoleculeVisual, { het: true, polymer: true, water: false, hetRef: 'het', polymerRef: 'polymer' }, { })
+            
             plugin.applyTransform(model).then(() => {
-                LiteMol.Bootstrap.Behaviour.SuppressCreateVisualWhenModelIsAdded = false;                
+                suppressCreateModel(false);         
                 const theme = { 
                     template: Vis.Molecule.Default.UniformThemeTemplate, 
                     colors: Vis.Molecule.Default.UniformThemeTemplate.colors!.set('Uniform', LiteMol.Visualization.Color.fromHex(0x00BFEF))
@@ -87,14 +98,19 @@ namespace LiteMol.Viewer.Examples {
                     .updateStyleTheme(theme);
                 (plugin.context.transforms.getController(Transformer.Molecule.CreateVisual, plugin.selectEntities('het')[0]) as Bootstrap.Components.Transform.MoleculeVisual)
                     .updateStyleTheme(theme);
-            });
+
+                const streamingEntity = plugin.selectEntities('5ire_density_streaming')[0];
+                if (streamingEntity) {
+                    plugin.command(Bootstrap.Command.Entity.SetCurrent, streamingEntity);
+                }
+            }).catch(() => suppressCreateModel(false));
 
             const params: Extensions.DensityStreaming.SetupParams = { 
                 server: 'https://webchem.ncbr.muni.cz/DensityServer/', //'http://localhost:1337/DensityServer/',
                 id: '5ire',
-                source: 'EMD',
+                source: 'EM',
                 initialStreamingParams: { 
-                    'EMD': Vis.Density.Style.create({
+                    'EM': Vis.Density.Style.create({
                         isoValue: 3,
                         isoValueType: Vis.Density.IsoValueType.Absolute,
                         color: LiteMol.Visualization.Color.fromHex(0x999999),
@@ -102,9 +118,53 @@ namespace LiteMol.Viewer.Examples {
                         transparency: { alpha: 0.2 },
                         taskType: 'Background'
                     }),
-                    isoValues: { 'EMD': 3 },
+                    isoValues: { 'EM': 3 },
                     detailLevel: 4
+                },
+                streamingEntityRef: '5ire_density_streaming'
+            };
+            const streaming = plugin.createTransform()
+                .add('molecule', Extensions.DensityStreaming.Setup, params);
+            
+            plugin.applyTransform(streaming);
+        });
+    }
+
+    function _5va1_cryo_em(plugin: Plugin.Controller) {
+        suppressCreateModel(true);
+        hideControlsIfNarrow(plugin);
+
+        const molecule = plugin.createTransform()
+            .add(plugin.root, Transformer.Data.Download, { url: `https://webchem.ncbr.muni.cz/CoordinateServer/5va1/full?encoding=bcif&lowPrecisionCoords=1`, type: 'Binary', id: '5va1' })
+            .then(Transformer.Molecule.CreateFromData, { format: LiteMol.Core.Formats.Molecule.SupportedFormats.mmBCIF }, { ref: 'molecule', isBinding: true });
+   
+        plugin.applyTransform(molecule).then(() => {
+            const model = plugin.createTransform()
+                .add('molecule', Transformer.Molecule.CreateModel, { modelIndex: 0 })
+                .then(Transformer.Molecule.CreateAssembly, { name: '1' })
+                .then(Transformer.Molecule.CreateMacromoleculeVisual, { het: true, polymer: true, water: false, hetRef: 'het', polymerRef: 'polymer' }, { })
+            plugin.applyTransform(model).then(() => {
+                suppressCreateModel(false);           
+                const theme = { 
+                    template: Vis.Molecule.Default.RainbowEntityThemeTemplate
+                };
+                (plugin.context.transforms.getController(Transformer.Molecule.CreateVisual, plugin.selectEntities('polymer')[0]) as Bootstrap.Components.Transform.MoleculeVisual)
+                    .updateStyleTheme(theme);
+
+                const streamingEntity = plugin.selectEntities('5va1_density_streaming')[0];
+                if (streamingEntity) {
+                    plugin.command(Bootstrap.Command.Entity.SetCurrent, streamingEntity);
                 }
+            }).catch(() => suppressCreateModel(false));
+
+            const params: Extensions.DensityStreaming.SetupParams = { 
+                server: 'https://webchem.ncbr.muni.cz/DensityServer/', //'http://localhost:1337/DensityServer/',
+                id: '5va1',
+                source: 'EM',
+                initialStreamingParams: { 
+                    detailLevel: 4
+                },
+                streamingEntityRef: '5va1_density_streaming'
             };
             const streaming = plugin.createTransform()
                 .add('molecule', Extensions.DensityStreaming.Setup, params);
@@ -114,41 +174,41 @@ namespace LiteMol.Viewer.Examples {
     }
 
     function HIV1Capsid(plugin: Plugin.Controller) {
-        LiteMol.Bootstrap.Behaviour.SuppressCreateVisualWhenModelIsAdded = true;
+        suppressCreateModel(true);
         hideControlsIfNarrow(plugin);
 
         const molecule = plugin.createTransform()
-            .add(plugin.root, Transformer.Data.Download, { url: `https://webchem.ncbr.muni.cz/CoordinateServer/3j3q/cartoon?encoding=bcif&lowPrecisionCoords=1`, type: 'Binary', id: '5ire' })
+            .add(plugin.root, Transformer.Data.Download, { url: `https://webchem.ncbr.muni.cz/CoordinateServer/3j3q/cartoon?encoding=bcif&lowPrecisionCoords=1`, type: 'Binary', id: '3j3q' })
             .then(Transformer.Molecule.CreateFromData, { format: LiteMol.Core.Formats.Molecule.SupportedFormats.mmBCIF }, { ref: 'molecule', isBinding: true })
             .then(Transformer.Molecule.CreateModel, { modelIndex: 0 })
             .then(Transformer.Molecule.CreateMacromoleculeVisual, { het: true, polymer: true, water: false, polymerRef: 'polymer' }, { });
    
         plugin.applyTransform(molecule).then(() => {
-            LiteMol.Bootstrap.Behaviour.SuppressCreateVisualWhenModelIsAdded = false;                
+            suppressCreateModel(false);
             const theme = { 
                 template: Vis.Molecule.Default.RainbowEntityThemeTemplate
             };
             (plugin.context.transforms.getController(Transformer.Molecule.CreateVisual, plugin.selectEntities('polymer')[0]) as Bootstrap.Components.Transform.MoleculeVisual)
                 .updateStyleTheme(theme);
-        });
+        }).catch(() => suppressCreateModel(false));
 
         return molecule;
     }
 
     async function HIV1Protease(plugin: Plugin.Controller) {
-        LiteMol.Bootstrap.Behaviour.SuppressCreateVisualWhenModelIsAdded = true;
+        suppressCreateModel(true);
         hideControlsIfNarrow(plugin);
         
         const rootRef = 'hiv1-protease-data';
 
         const molecule = plugin.createTransform()
-            .add(plugin.root, Transformer.Data.Download, { url: `https://webchem.ncbr.muni.cz/CoordinateServer/2f80/full?encoding=bcif&lowPrecisionCoords=1`, type: 'Binary', id: '5ire' }, { ref: rootRef })
+            .add(plugin.root, Transformer.Data.Download, { url: `https://webchem.ncbr.muni.cz/CoordinateServer/2f80/full?encoding=bcif&lowPrecisionCoords=1`, type: 'Binary', id: '2f80' }, { ref: rootRef })
             .then(Transformer.Molecule.CreateFromData, { format: LiteMol.Core.Formats.Molecule.SupportedFormats.mmBCIF }, { ref: 'molecule', isBinding: true })
             .then(Transformer.Molecule.CreateModel, { modelIndex: 0 })
             .then(Transformer.Molecule.CreateMacromoleculeVisual, { het: true, polymer: true, water: false, hetRef: 'het-visual', polymerRef: 'polymer-visual' }, { });
    
         await plugin.applyTransform(molecule);
-        LiteMol.Bootstrap.Behaviour.SuppressCreateVisualWhenModelIsAdded = false;
+        suppressCreateModel(false);
 
         plugin.command(Bootstrap.Command.Molecule.CreateSelectInteraction, { 
             entity: plugin.selectEntities('het-visual')[0], 
@@ -197,7 +257,7 @@ namespace LiteMol.Viewer.Examples {
     }
 
     async function LigandInteraction_3a4x(plugin: Plugin.Controller) {        
-        LiteMol.Bootstrap.Behaviour.SuppressCreateVisualWhenModelIsAdded = true;
+        suppressCreateModel(true);
         LiteMol.Bootstrap.Behaviour.Molecule.SuppressShowInteractionOnSelect = true;
         hideControlsIfNarrow(plugin);
 
@@ -232,6 +292,7 @@ namespace LiteMol.Viewer.Examples {
 
 
         await plugin.applyTransform(model);
+        suppressCreateModel(false);
 
         const annotation = plugin.createTransform()
             .add('molecule', Viewer.ValidatorDB.DownloadAndCreate, { reportRef: 'validation' });
@@ -262,7 +323,8 @@ namespace LiteMol.Viewer.Examples {
         unsubscribeOnDelete(
             plugin, 
             () => plugin.subscribe(Bootstrap.Command.Visual.ResetScene, () => setTimeout(() => applyColoring(), 25)), 
-            rootRef);
+            rootRef,
+            () => LiteMol.Bootstrap.Behaviour.Molecule.SuppressShowInteractionOnSelect = false);
     }
 
 }
