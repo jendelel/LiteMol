@@ -80,7 +80,8 @@ var ExampleNames = [
     'Transforms',
     'Channels',
     'PrankWeb',
-    'PrimitivesAndLabels',    'AngularExample'
+    'PrimitivesAndLabels',
+    'AngularExample'
 ];
 
 var ViewerAndExamplesTasks = [];
