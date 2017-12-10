@@ -15,7 +15,12 @@ namespace LiteMol.PrankWeb {
             { transformer: Transformer.Molecule.CreateSymmetryMates, view: Views.Transform.Molecule.CreateSymmetryMates, initiallyCollapsed: true },
 
             { transformer: Transformer.Molecule.CreateMacromoleculeVisual, view: Views.Transform.Empty },
-            { transformer: Transformer.Molecule.CreateVisual, view: Views.Transform.Molecule.CreateVisual }
+            { transformer: Transformer.Molecule.CreateVisual, view: Views.Transform.Molecule.CreateVisual },
+
+            
+            { transformer: Transformer.Molecule.CreateLabels, view: Views.Transform.Molecule.CreateLabels },
+
+            { transformer: Extensions.ParticleColoring.Apply, view: Extensions.ParticleColoring.UI.Apply, initiallyCollapsed: true },
         ],
         behaviours: [
             // you will find the source of all behaviours in the Bootstrap/Behaviour directory
@@ -39,9 +44,12 @@ namespace LiteMol.PrankWeb {
             // distance to the last "clicked" element
             Bootstrap.Behaviour.Molecule.DistanceToLastClickedElement,
 
+            Bootstrap.Behaviour.Molecule.HighlightElementInfo,
+            Bootstrap.Behaviour.Molecule.DistanceToLastClickedElement,
+
             // when somethinh is selected, this will create an "overlay visual" of the selected residue and show every other residue within 5ang
             // you will not want to use this for the ligand pages, where you create the same thing this does at startup
-            //Bootstrap.Behaviour.Molecule.ShowInteractionOnSelect(5),                
+            Bootstrap.Behaviour.Molecule.ShowInteractionOnSelect(5),                
 
             // this tracks what is downloaded and some basic actions. Does not send any private data etc.
             // While it is not required for any functionality, we as authors are very much interested in basic 

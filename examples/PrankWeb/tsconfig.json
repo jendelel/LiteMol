@@ -18,6 +18,8 @@
   },
   "files": [
     "../../dist/js/LiteMol-plugin.d.ts",
+    "../../src/Viewer/Extensions/ParticleColoring/Coloring.ts",
+    "../../src/Viewer/Extensions/ParticleColoring/UI.tsx",
     
     "./src/ControlButtons.tsx",
     "./src/SequenceEntity.ts",    
@@ -28,5 +30,7 @@
     "./src/App.tsx",
     "./src/Specification.ts",
     "./src/App.ts"
+
+    
   ]
 }
