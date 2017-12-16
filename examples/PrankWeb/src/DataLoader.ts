@@ -152,7 +152,7 @@ namespace LiteMol.PrankWeb.DataLoader {
             het.then(Transformer.Molecule.CreateVisual, { style: Bootstrap.Visualization.Molecule.Default.ForType.get('BallsAndSticks') });
 
             // Water.
-            let water = action.add(data.model, Transformer.Molecule.CreateSelectionFromQuery, { query: Core.Structure.Query.entities({ type: 'water' }), name: 'Water', silent: true }, { isBinding: true, isHidden:true })
+            let water = action.add(data.model, Transformer.Molecule.CreateSelectionFromQuery, { query: Core.Structure.Query.entities({ type: 'water' }), name: 'Water', silent: true }, { isBinding: true, ref: 'water' })
             water.then(Transformer.Molecule.CreateVisual, { style: ballsAndSticksStyle });
 
             // Create a group for all pockets.
@@ -245,12 +245,14 @@ namespace LiteMol.PrankWeb.DataLoader {
         const surface = plugin.selectEntities(Bootstrap.Tree.Selection.byRef('polymer-surface-col').subtree().ofType(Bootstrap.Entity.Molecule.Visual))[0];
         const cartoon = plugin.selectEntities(Bootstrap.Tree.Selection.byRef('polymer-cartoon-col').subtree().ofType(Bootstrap.Entity.Molecule.Visual))[0];
         const atoms = plugin.selectEntities(Bootstrap.Tree.Selection.byRef('polymer-atoms-col').subtree().ofType(Bootstrap.Entity.Molecule.Visual))[0];
+        const water = plugin.selectEntities(Bootstrap.Tree.Selection.byRef('water'))[0];
         plugin.command(Bootstrap.Command.Visual.UpdateBasicTheme, { visual: surface as any, theme: theme });
         Bootstrap.Command.Entity.SetVisibility.dispatch(plugin.context, { entity: surface, visible: false });
         plugin.command(Bootstrap.Command.Visual.UpdateBasicTheme, { visual: cartoon as any, theme: residueTheme });
         Bootstrap.Command.Entity.SetVisibility.dispatch(plugin.context, { entity: cartoon, visible: true });
         plugin.command(Bootstrap.Command.Visual.UpdateBasicTheme, { visual: atoms as any, theme: theme });
         Bootstrap.Command.Entity.SetVisibility.dispatch(plugin.context, { entity: atoms, visible: false });
+        Bootstrap.Command.Entity.SetVisibility.dispatch(plugin.context, { entity: water, visible: false }); // Hide water balls and sticks.
         
         plugin.selectEntities(Bootstrap.Tree.Selection.byRef('pockets').subtree().ofType(Bootstrap.Entity.Molecule.Visual)).forEach(selection => {;
             plugin.command(Bootstrap.Command.Visual.UpdateBasicTheme, { visual: selection as any, theme: theme });
