@@ -70,22 +70,31 @@ namespace LiteMol.PrankWeb {
         }
 
         private toggleColoring(isVisible: boolean) {
-            let mapping = DataLoader.getAtomColorMapping(this.props.plugin, this.props.model, false);
+            let atomMapping = DataLoader.getAtomColorMapping(this.props.plugin, this.props.model, false);
+            let residueMapping = DataLoader.getResidueColorMapping(this.props.plugin, this.props.model);
             let pocketQuery = Query.atomsById.apply(null, this.props.pocket.surfAtomIds).compile()
-            if (!mapping) return;
+            let pocketResQuery = DataLoader.residuesBySeqNums(...this.props.pocket.residueIds).compile()
+            if (!atomMapping || !residueMapping) return;
             if (isVisible) {
                 const colorIndex = (this.props.index % Colors.size) + 1; // Index of color that we want for the particular atom. i.e. Colors.get(i%Colors.size);
                 for (const atom of pocketQuery(this.props.model.props.model.queryContext).unionAtomIndices()) {
-                    mapping[atom] = colorIndex;
+                    atomMapping[atom] = colorIndex;
+                }
+                for (const atom of pocketResQuery(this.props.model.props.model.queryContext).unionAtomIndices()) {
+                    residueMapping[atom] = colorIndex;
                 }
             } else {
                 let originalMapping = DataLoader.getAtomColorMapping(this.props.plugin, this.props.model, true);
                 if (!originalMapping) return;
                 for (const atom of pocketQuery(this.props.model.props.model.queryContext).unionAtomIndices()) {
-                    mapping[atom] = originalMapping[atom];
+                    atomMapping[atom] = originalMapping[atom];
+                }
+                for (const atom of pocketResQuery(this.props.model.props.model.queryContext).unionAtomIndices()) {
+                    residueMapping[atom] = originalMapping[atom];
                 }
             }
-            DataLoader.setAtomColorMapping(this.props.plugin, this.props.model, mapping, false);
+            DataLoader.setAtomColorMapping(this.props.plugin, this.props.model, atomMapping, false);
+            DataLoader.setResidueColorMapping(this.props.plugin, this.props.model, residueMapping);
             DataLoader.colorProtein(this.props.plugin);
         }
 

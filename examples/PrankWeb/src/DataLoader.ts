@@ -28,6 +28,7 @@ namespace LiteMol.PrankWeb.DataLoader {
     function initColorMapping(model: Bootstrap.Entity.Molecule.Model, prediction: Prediction, sequence: SequenceEntity) {
         const atomColorMapConservation = new Uint8Array(model.props.model.data.atoms.count);
         const atomColorMap = new Uint8Array(model.props.model.data.atoms.count);
+        const residueColorMap = new Uint8Array(model.props.model.data.atoms.count);
         let seq = sequence.props.seq
         let seqIndices = seq.indices;
         let seqScores = seq.scores;
@@ -38,6 +39,7 @@ namespace LiteMol.PrankWeb.DataLoader {
                 for (const atom of query(model.props.model.queryContext).unionAtomIndices()) {
                     atomColorMap[atom] = shade + Colors.size + 1; // First there is fallbackColor(0), then pocketColors(1-9) and lastly conservation colors.
                     atomColorMapConservation[atom] = shade + Colors.size + 1; // First there is fallbackColor(0), then pocketColors(1-9) and lastly conservation colors.
+                    residueColorMap[atom] = shade + Colors.size + 1;
                 }
             });
         }
@@ -45,12 +47,16 @@ namespace LiteMol.PrankWeb.DataLoader {
         let pockets = prediction.props.pockets;
         pockets.forEach((pocket, i) => {
             let pocketQuery = Query.atomsById.apply(null, pocket.surfAtomIds).compile()
+            let pocketResQuery = residuesBySeqNums(...pocket.residueIds).compile()
             const colorIndex = (i % Colors.size) + 1; // Index of color that we want for the particular atom. i.e. Colors.get(i%Colors.size);
             for (const atom of pocketQuery(model.props.model.queryContext).unionAtomIndices()) {
                 atomColorMap[atom] = colorIndex;
             }
+            for (const atom of pocketResQuery(model.props.model.queryContext).unionAtomIndices()) {
+                residueColorMap[atom] = colorIndex;
+            }
         });
-        return { atomColorMap, atomColorMapConservation };
+        return { atomColorMap, atomColorMapConservation, residueColorMap };
     }
 
     export function loadData(plugin: Plugin.Controller, inputType: string, inputId: string) {
@@ -88,8 +94,9 @@ namespace LiteMol.PrankWeb.DataLoader {
                     let prediction = plugin.context.select('pockets')[0] as Prediction;
                     let sequence = plugin.context.select('sequence')[0] as SequenceEntity;
                     let mappings = initColorMapping(model, prediction, sequence);
-                    DataLoader.setAtomColorMapping(plugin, model, mappings.atomColorMap);
+                    DataLoader.setAtomColorMapping(plugin, model, mappings.atomColorMap, false);
                     DataLoader.setAtomColorMapping(plugin, model, mappings.atomColorMapConservation, true);
+                    DataLoader.setResidueColorMapping(plugin, model, mappings.residueColorMap);
                     if (!prediction)
                         rej("Unable to load predictions.");
                     else if (!sequence)
@@ -135,25 +142,31 @@ namespace LiteMol.PrankWeb.DataLoader {
             // Create visuals for protein, ligand and water.
             // Protein.
             let polymer = action.add(data.model, Transformer.Molecule.CreateSelectionFromQuery, { query: Core.Structure.Query.nonHetPolymer(), name: 'Polymer', silent: true }, { isBinding: true, ref: 'polymer' })
-            polymer.then(Transformer.Molecule.CreateVisual, { style: cartoonStyle }, { ref: 'polymer-cartoon' });
-            polymer.then(Transformer.Molecule.CreateVisual, { style: surfaceStyle }, { ref: 'polymer-surface' })
+            let colPolymerGroup = polymer.then(Transformer.Basic.CreateGroup, {label: 'Color view', description:"Colored views"})
+            colPolymerGroup.then(Transformer.Molecule.CreateVisual, { style: cartoonStyle }, { ref: 'polymer-cartoon-col' });
+            colPolymerGroup.then(Transformer.Molecule.CreateVisual, { style: surfaceStyle }, { ref: 'polymer-surface-col' });
+            colPolymerGroup.then(Transformer.Molecule.CreateVisual, { style: Bootstrap.Visualization.Molecule.Default.ForType.get('BallsAndSticks')}, {ref: 'polymer-atoms-col'});
 
             // Ligand.
             let het = action.add(data.model, Transformer.Molecule.CreateSelectionFromQuery, { query: Core.Structure.Query.hetGroups(), name: 'HET', silent: true }, { isBinding: true })
             het.then(Transformer.Molecule.CreateVisual, { style: Bootstrap.Visualization.Molecule.Default.ForType.get('BallsAndSticks') });
 
             // Water.
-            let water = action.add(data.model, Transformer.Molecule.CreateSelectionFromQuery, { query: Core.Structure.Query.entities({ type: 'water' }), name: 'Water', silent: true }, { isBinding: true })
+            let water = action.add(data.model, Transformer.Molecule.CreateSelectionFromQuery, { query: Core.Structure.Query.entities({ type: 'water' }), name: 'Water', silent: true }, { isBinding: true, isHidden:true })
             water.then(Transformer.Molecule.CreateVisual, { style: ballsAndSticksStyle });
 
             // Create a group for all pockets.
-            let pocketGroup = action.add(data.model, Transformer.Basic.CreateGroup, { label: 'Group', description: 'Pockets' });
+            let pocketGroup = action.add(data.model, Transformer.Basic.CreateGroup, { label: 'Pockets', description: 'Pockets' }, {ref: "pockets"});
             // For each pocket create selections, but don't create any visuals for them. 
+            let allPocketsAtoms
             pockets.forEach((pocket, i) => {
+                let pocketSubGroup = pocketGroup.then(Transformer.Basic.CreateGroup, { label: pockets[i].name, description: pockets[i].name }, {ref: pockets[i].name});
                 let query: Query.Builder = Query.atomsById.apply(null, pocket.surfAtomIds);
+                let resQuery: Query.Builder = residuesBySeqNums(...pocket.residueIds);
                 // Create selection.
-                let sel = pocketGroup.then(Transformer.Molecule.CreateSelectionFromQuery, { query: query, name: pockets[i].name, silent: true }, { ref: pockets[i].name })
-                //sel.then(<any>Transformer.Molecule.CreateVisual, { style: Bootstrap.Visualization.Molecule.Default.ForType.get('BallsAndSticks') }, { isHidden: false });
+                let atomSel = pocketGroup.then(Transformer.Molecule.CreateSelectionFromQuery, { query: query, name: `${pockets[i].name}-atoms`, silent: true }, { ref: `${pockets[i].name}-atoms` })
+                let resSel = pocketGroup.then(Transformer.Molecule.CreateSelectionFromQuery, { query: resQuery, name: `${pockets[i].name}-res`, silent: true }, { ref: `${pockets[i].name}-res` })
+                resSel.then(<any>Transformer.Molecule.CreateVisual, { style: Bootstrap.Visualization.Molecule.Default.ForType.get('BallsAndSticks') }, { isHidden: false, ref: `${pockets[i].name}-res-vis` });
                 //sel.then(<any>Transformer.Molecule.CreateVisual, { style: selectionStyle }, { isHidden: false });
             });
             plugin.applyTransform(action)
@@ -162,17 +175,31 @@ namespace LiteMol.PrankWeb.DataLoader {
         });
     }
 
-    export function setAtomColorMapping(plugin: Plugin.Controller, model: Bootstrap.Entity.Molecule.Model, mapping: Uint8Array, conservation: boolean = false) {
+    export function setAtomColorMapping(plugin: Plugin.Controller, model: Bootstrap.Entity.Molecule.Model, mapping: Uint8Array, original: boolean = false) {
         let ctx = plugin.context
         let cache = ctx.entityCache;
-        let cacheId = conservation ? '__PrankWeb__atomColorMapping__conservation__' : '__PrankWeb__atomColorMapping__'
+        let cacheId = original ? '__PrankWeb__atomColorMapping__original__' : '__PrankWeb__atomColorMapping__'
         cache.set(model, cacheId, mapping)
     }
 
-    export function getAtomColorMapping(plugin: Plugin.Controller, model: Bootstrap.Entity.Molecule.Model, conservation: boolean = false) {
+    export function getAtomColorMapping(plugin: Plugin.Controller, model: Bootstrap.Entity.Molecule.Model, original: boolean = false) {
         let ctx = plugin.context
         let cache = ctx.entityCache;
-        let cacheId = conservation ? '__PrankWeb__atomColorMapping__conservation__' : '__PrankWeb__atomColorMapping__'
+        let cacheId = original ? '__PrankWeb__atomColorMapping__original__' : '__PrankWeb__atomColorMapping__'
+        return cache.get<Uint8Array>(model, cacheId);
+    }
+
+    export function setResidueColorMapping(plugin: Plugin.Controller, model: Bootstrap.Entity.Molecule.Model, mapping: Uint8Array) {
+        let ctx = plugin.context
+        let cache = ctx.entityCache;
+        let cacheId = '__PrankWeb__residueColorMapping__'
+        cache.set(model, cacheId, mapping)
+    }
+
+    export function getResidueColorMapping(plugin: Plugin.Controller, model: Bootstrap.Entity.Molecule.Model) {
+        let ctx = plugin.context
+        let cache = ctx.entityCache;
+        let cacheId = '__PrankWeb__residueColorMapping__'
         return cache.get<Uint8Array>(model, cacheId);
     }
 
@@ -191,6 +218,8 @@ namespace LiteMol.PrankWeb.DataLoader {
         if (!model) return false;
         let atomColorMapping = getAtomColorMapping(plugin, model);
         if (!atomColorMapping) return false;
+        let residueColorMapping = getResidueColorMapping(plugin, model);
+        if (!residueColorMapping) return false;
         let colorMap = LiteMol.Core.Utils.FastMap.create<number, Visualization.Color>();
         const fallbackColor = Visualization.Color.fromHex(0xffffff); // white
         colorMap.set(0, fallbackColor);
@@ -207,15 +236,26 @@ namespace LiteMol.PrankWeb.DataLoader {
         colors.set('Highlight', Visualization.Theme.Default.HighlightColor)
 
         // Create mapping, theme and apply to all protein visuals.
-        const mapping = Visualization.Theme.createColorMapMapping(i => atomColorMapping![i], colorMap, fallbackColor);
+        const atomMapping = Visualization.Theme.createColorMapMapping(i => atomColorMapping![i], colorMap, fallbackColor);
+        const residueMapping = Visualization.Theme.createColorMapMapping(i => residueColorMapping![i], colorMap, fallbackColor);
         // make the theme "sticky" so that it persist "ResetScene" command.
-        const themeTransparent = Visualization.Theme.createMapping(mapping, { colors, isSticky: true, transparency: { alpha: 1 } });
-        //const theme = Visualization.Theme.createMapping(mapping, { colors, isSticky: true });
+        const theme = Visualization.Theme.createMapping(atomMapping, { colors, isSticky: true, transparency: { alpha: 1 } });
+        const residueTheme = Visualization.Theme.createMapping(residueMapping, { colors, isSticky: true });
 
-        const surface = plugin.selectEntities(Bootstrap.Tree.Selection.byRef('polymer-surface').subtree().ofType(Bootstrap.Entity.Molecule.Visual))[0];
-        //const cartoon = plugin.selectEntities(Bootstrap.Tree.Selection.byRef('polymer-cartoon').subtree().ofType(Bootstrap.Entity.Molecule.Visual))[0];
-        plugin.command(Bootstrap.Command.Visual.UpdateBasicTheme, { visual: surface as any, theme: themeTransparent });
-        //plugin.command(Bootstrap.Command.Visual.UpdateBasicTheme, { visual: cartoon as any, theme });
+        const surface = plugin.selectEntities(Bootstrap.Tree.Selection.byRef('polymer-surface-col').subtree().ofType(Bootstrap.Entity.Molecule.Visual))[0];
+        const cartoon = plugin.selectEntities(Bootstrap.Tree.Selection.byRef('polymer-cartoon-col').subtree().ofType(Bootstrap.Entity.Molecule.Visual))[0];
+        const atoms = plugin.selectEntities(Bootstrap.Tree.Selection.byRef('polymer-atoms-col').subtree().ofType(Bootstrap.Entity.Molecule.Visual))[0];
+        plugin.command(Bootstrap.Command.Visual.UpdateBasicTheme, { visual: surface as any, theme: theme });
+        Bootstrap.Command.Entity.SetVisibility.dispatch(plugin.context, { entity: surface, visible: false });
+        plugin.command(Bootstrap.Command.Visual.UpdateBasicTheme, { visual: cartoon as any, theme: residueTheme });
+        Bootstrap.Command.Entity.SetVisibility.dispatch(plugin.context, { entity: cartoon, visible: true });
+        plugin.command(Bootstrap.Command.Visual.UpdateBasicTheme, { visual: atoms as any, theme: theme });
+        Bootstrap.Command.Entity.SetVisibility.dispatch(plugin.context, { entity: atoms, visible: false });
+        
+        plugin.selectEntities(Bootstrap.Tree.Selection.byRef('pockets').subtree().ofType(Bootstrap.Entity.Molecule.Visual)).forEach(selection => {;
+            plugin.command(Bootstrap.Command.Visual.UpdateBasicTheme, { visual: selection as any, theme: theme });
+        });
+
         return true;
     }
 }
