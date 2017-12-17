@@ -86,9 +86,10 @@ namespace LiteMol.PrankWeb {
             const surface = plugin.selectEntities(Bootstrap.Tree.Selection.byRef(DataLoader.TREE_REF_SURFACE).subtree().ofType(Bootstrap.Entity.Molecule.Visual))[0];
             const cartoon = plugin.selectEntities(Bootstrap.Tree.Selection.byRef(DataLoader.TREE_REF_CARTOON).subtree().ofType(Bootstrap.Entity.Molecule.Visual))[0];
             const atoms = plugin.selectEntities(Bootstrap.Tree.Selection.byRef(DataLoader.TREE_REF_ATOMS).subtree().ofType(Bootstrap.Entity.Molecule.Visual))[0];
-            this.setState({coloredView: (this.state.coloredView + 1) % 3});
             if (!surface || !cartoon || !atoms) return
-            switch (this.state.coloredView) {
+            let newStateView : ColoredView = (this.state.coloredView + 1) % 3;
+            this.setState({coloredView: newStateView});
+            switch (newStateView) {
                 case ColoredView.Atoms: {
                     Bootstrap.Command.Entity.SetVisibility.dispatch(plugin.context, { entity: atoms, visible: true });
                     Bootstrap.Command.Entity.SetVisibility.dispatch(plugin.context, { entity: surface, visible: false });
