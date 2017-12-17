@@ -19,6 +19,13 @@ namespace LiteMol.PrankWeb {
             customSpecification: PrankWebSpec
         });
         plugin.context.logger.message(`LiteMol ${Plugin.VERSION.number}`);
+
+        plugin.command(Bootstrap.Command.Layout.SetState, {
+            regionStates: {
+                [Bootstrap.Components.LayoutRegion.Top]: 'Sticky',
+            }
+        })
+
         return plugin;
     }
 

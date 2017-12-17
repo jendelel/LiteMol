@@ -5,8 +5,12 @@ namespace LiteMol.PrankWeb {
     import Bootstrap = LiteMol.Bootstrap;
     import React = LiteMol.Plugin.React; // this is to enable the HTML-like syntax
 
+    enum ColoredView {
+        Cartoon = 0, Surface, Atoms,
+    }
 
-    export class ControlButtons extends React.Component<{  plugin: Plugin.Controller, inputType: string, inputId: string }, {}> {
+    export class ControlButtons extends React.Component<{  plugin: Plugin.Controller, inputType: string, inputId: string }, { coloredView: ColoredView }> {
+        state = { coloredView: ColoredView.Cartoon }
 
         // http://stackoverflow.com/questions/400212/how-do-i-copy-to-the-clipboard-in-javascript
         copyTextToClipboard(text : string) {
@@ -77,6 +81,35 @@ namespace LiteMol.PrankWeb {
             })
         }
 
+        toggleStructuralView() {
+            let plugin = this.props.plugin
+            const surface = plugin.selectEntities(Bootstrap.Tree.Selection.byRef(DataLoader.TREE_REF_SURFACE).subtree().ofType(Bootstrap.Entity.Molecule.Visual))[0];
+            const cartoon = plugin.selectEntities(Bootstrap.Tree.Selection.byRef(DataLoader.TREE_REF_CARTOON).subtree().ofType(Bootstrap.Entity.Molecule.Visual))[0];
+            const atoms = plugin.selectEntities(Bootstrap.Tree.Selection.byRef(DataLoader.TREE_REF_ATOMS).subtree().ofType(Bootstrap.Entity.Molecule.Visual))[0];
+            this.setState({coloredView: (this.state.coloredView + 1) % 3});
+            if (!surface || !cartoon || !atoms) return
+            switch (this.state.coloredView) {
+                case ColoredView.Atoms: {
+                    Bootstrap.Command.Entity.SetVisibility.dispatch(plugin.context, { entity: atoms, visible: true });
+                    Bootstrap.Command.Entity.SetVisibility.dispatch(plugin.context, { entity: surface, visible: false });
+                    Bootstrap.Command.Entity.SetVisibility.dispatch(plugin.context, { entity: cartoon, visible: true });
+                    break;
+                }
+                case ColoredView.Cartoon: {
+                    Bootstrap.Command.Entity.SetVisibility.dispatch(plugin.context, { entity: atoms, visible: false });
+                    Bootstrap.Command.Entity.SetVisibility.dispatch(plugin.context, { entity: surface, visible: false });
+                    Bootstrap.Command.Entity.SetVisibility.dispatch(plugin.context, { entity: cartoon, visible: true });
+                    break;
+                }
+                case ColoredView.Surface: {
+                    Bootstrap.Command.Entity.SetVisibility.dispatch(plugin.context, { entity: atoms, visible: false });
+                    Bootstrap.Command.Entity.SetVisibility.dispatch(plugin.context, { entity: surface, visible: true });
+                    Bootstrap.Command.Entity.SetVisibility.dispatch(plugin.context, { entity: cartoon, visible: true });
+                    break;
+                }
+            }
+        }
+
         render() {
             let type: string = this.props.inputType == "pdb" ? "id" : "upload";
             let downloadUrl = `/api/${type}/all/${this.props.inputId}`;
@@ -86,7 +119,8 @@ namespace LiteMol.PrankWeb {
                 <button className="control-btn" title="Download report" onClick={() => { window.location.href = downloadUrl; }}><span className="button-icon download-icon" /></button>
                 <button className="control-btn" title="Send via e-mail" onClick={() => { window.open(mail, '_blank'); }}><span className="button-icon mail-icon" /></button>
                 <button className="control-btn" title="Copy URL to clipboard" onClick={() => { this.copyTextToClipboard(window.location.href) }}><span className="button-icon clipboard-icon" /></button>
-                <button className="control-btn" title="Toogle sequence view" onClick={() => { this.toggleSequenceView() }}><span className="button-icon seq-icon" /></button>
+                <button className="control-btn" title="Show/hide sequence view" onClick={() => { this.toggleSequenceView() }}><span className="button-icon seq-icon" /></button>
+                <button className="control-btn" title="Toogle structural view (cartoon, surface, atoms)" onClick={() => { this.toggleStructuralView() }}><span className="button-icon struct-icon" /></button>
             </div>);
         }
     }

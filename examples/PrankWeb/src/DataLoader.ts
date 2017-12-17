@@ -9,6 +9,10 @@ namespace LiteMol.PrankWeb.DataLoader {
         sequence: SequenceEntity;
     }
 
+    export let TREE_REF_SURFACE : string = 'polymer-surface-col'
+    export let TREE_REF_ATOMS : string = 'polymer-atoms-col'
+    export let TREE_REF_CARTOON : string = 'polymer-cartoon-col'
+
     export function residuesBySeqNums(...seqNums: string[]) { 
         return Query.residues(...seqNums.map(seqNum => {
             let num = 0;
@@ -143,9 +147,9 @@ namespace LiteMol.PrankWeb.DataLoader {
             // Protein.
             let polymer = action.add(data.model, Transformer.Molecule.CreateSelectionFromQuery, { query: Core.Structure.Query.nonHetPolymer(), name: 'Polymer', silent: true }, { isBinding: true, ref: 'polymer' })
             let colPolymerGroup = polymer.then(Transformer.Basic.CreateGroup, {label: 'Color view', description:"Colored views"})
-            colPolymerGroup.then(Transformer.Molecule.CreateVisual, { style: cartoonStyle }, { ref: 'polymer-cartoon-col' });
-            colPolymerGroup.then(Transformer.Molecule.CreateVisual, { style: surfaceStyle }, { ref: 'polymer-surface-col' });
-            colPolymerGroup.then(Transformer.Molecule.CreateVisual, { style: Bootstrap.Visualization.Molecule.Default.ForType.get('BallsAndSticks')}, {ref: 'polymer-atoms-col'});
+            colPolymerGroup.then(Transformer.Molecule.CreateVisual, { style: cartoonStyle }, { ref: TREE_REF_CARTOON });
+            colPolymerGroup.then(Transformer.Molecule.CreateVisual, { style: surfaceStyle }, { ref: TREE_REF_SURFACE });
+            colPolymerGroup.then(Transformer.Molecule.CreateVisual, { style: Bootstrap.Visualization.Molecule.Default.ForType.get('BallsAndSticks')}, {ref: TREE_REF_ATOMS});
 
             // Ligand.
             let het = action.add(data.model, Transformer.Molecule.CreateSelectionFromQuery, { query: Core.Structure.Query.hetGroups(), name: 'HET', silent: true }, { isBinding: true })
@@ -242,9 +246,9 @@ namespace LiteMol.PrankWeb.DataLoader {
         const theme = Visualization.Theme.createMapping(atomMapping, { colors, isSticky: true, transparency: { alpha: 1 } });
         const residueTheme = Visualization.Theme.createMapping(residueMapping, { colors, isSticky: true });
 
-        const surface = plugin.selectEntities(Bootstrap.Tree.Selection.byRef('polymer-surface-col').subtree().ofType(Bootstrap.Entity.Molecule.Visual))[0];
-        const cartoon = plugin.selectEntities(Bootstrap.Tree.Selection.byRef('polymer-cartoon-col').subtree().ofType(Bootstrap.Entity.Molecule.Visual))[0];
-        const atoms = plugin.selectEntities(Bootstrap.Tree.Selection.byRef('polymer-atoms-col').subtree().ofType(Bootstrap.Entity.Molecule.Visual))[0];
+        const surface = plugin.selectEntities(Bootstrap.Tree.Selection.byRef(TREE_REF_SURFACE).subtree().ofType(Bootstrap.Entity.Molecule.Visual))[0];
+        const cartoon = plugin.selectEntities(Bootstrap.Tree.Selection.byRef(TREE_REF_CARTOON).subtree().ofType(Bootstrap.Entity.Molecule.Visual))[0];
+        const atoms = plugin.selectEntities(Bootstrap.Tree.Selection.byRef(TREE_REF_ATOMS).subtree().ofType(Bootstrap.Entity.Molecule.Visual))[0];
         const water = plugin.selectEntities(Bootstrap.Tree.Selection.byRef('water'))[0];
         plugin.command(Bootstrap.Command.Visual.UpdateBasicTheme, { visual: surface as any, theme: theme });
         Bootstrap.Command.Entity.SetVisibility.dispatch(plugin.context, { entity: surface, visible: false });
