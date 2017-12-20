@@ -128,6 +128,10 @@ namespace LiteMol.PrankWeb.DataLoader {
                 .set('Uniform', Visualization.Color.fromHex(0xffffff))
                 .set('Selection', Visualization.Theme.Default.SelectionColor)
                 .set('Highlight', Visualization.Theme.Default.HighlightColor);
+            let ligandColors = Bootstrap.Immutable.Map<string, Visualization.Color>()
+                .set('Uniform', Visualization.Color.fromHex(0xe5cf42))
+                .set('Selection', Visualization.Theme.Default.SelectionColor)
+                .set('Highlight', Visualization.Theme.Default.HighlightColor);
 
             // Style for protein surface.
             let surfaceStyle: Bootstrap.Visualization.Molecule.Style<Bootstrap.Visualization.Molecule.SurfaceParams> = {
@@ -136,10 +140,16 @@ namespace LiteMol.PrankWeb.DataLoader {
                 theme: { template: Bootstrap.Visualization.Molecule.Default.UniformThemeTemplate, colors: surfaceColors, transparency: { alpha: 0.6 } }
             };
             // Style for water.
-            let ballsAndSticksStyle: Bootstrap.Visualization.Molecule.Style<Bootstrap.Visualization.Molecule.BallsAndSticksParams> = {
+            let ballsAndSticksStyleWater: Bootstrap.Visualization.Molecule.Style<Bootstrap.Visualization.Molecule.BallsAndSticksParams> = {
                 type: 'BallsAndSticks',
                 params: { useVDW: false, atomRadius: 0.23, bondRadius: 0.09, detail: 'Automatic' },
                 theme: { template: Bootstrap.Visualization.Molecule.Default.ElementSymbolThemeTemplate, colors: Bootstrap.Visualization.Molecule.Default.ElementSymbolThemeTemplate.colors, transparency: { alpha: 0.25 } }
+            }
+
+            let ballsAndSticksStyleLigand: Bootstrap.Visualization.Molecule.Style<Bootstrap.Visualization.Molecule.BallsAndSticksParams> = {
+                type: 'BallsAndSticks',
+                params: Bootstrap.Visualization.Molecule.Default.BallsAndSticksParams,
+                theme: { template: Bootstrap.Visualization.Molecule.Default.UniformThemeTemplate, colors: ligandColors, transparency: { alpha: 1 } }
             }
 
             let action = plugin.createTransform();
@@ -153,11 +163,11 @@ namespace LiteMol.PrankWeb.DataLoader {
 
             // Ligand.
             let het = action.add(data.model, Transformer.Molecule.CreateSelectionFromQuery, { query: Core.Structure.Query.hetGroups(), name: 'HET', silent: true }, { isBinding: true })
-            het.then(Transformer.Molecule.CreateVisual, { style: Bootstrap.Visualization.Molecule.Default.ForType.get('BallsAndSticks') });
+            het.then(Transformer.Molecule.CreateVisual, { style: ballsAndSticksStyleLigand });
 
             // Water.
             let water = action.add(data.model, Transformer.Molecule.CreateSelectionFromQuery, { query: Core.Structure.Query.entities({ type: 'water' }), name: 'Water', silent: true }, { isBinding: true, ref: 'water' })
-            water.then(Transformer.Molecule.CreateVisual, { style: ballsAndSticksStyle });
+            water.then(Transformer.Molecule.CreateVisual, { style: ballsAndSticksStyleWater });
 
             // Create a group for all pockets.
             let pocketGroup = action.add(data.model, Transformer.Basic.CreateGroup, { label: 'Pockets', description: 'Pockets' }, {ref: "pockets"});
