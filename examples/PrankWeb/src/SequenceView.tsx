@@ -302,6 +302,7 @@ namespace LiteMol.PrankWeb {
                 el => { el.style.height = height; });
 
             this.controller.context.scene.scene.resized();
+            this.selectAndDisplayToastLetter(this.lastNumber, false);
         }
 
         onLetterMouseEnter(seqNumber?: number) {
