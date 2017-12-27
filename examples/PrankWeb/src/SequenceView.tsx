@@ -34,10 +34,15 @@ namespace LiteMol.PrankWeb {
     }
 
     class ProtaelRegion {
-        constructor(label: string, start: number, end: number) {
+        constructor(label: string, start: number, end: number, odd : boolean) {
             this.label = label;
             this.start = start;
             this.end = end;
+            if (!odd) {
+                this.color = "#DDD";
+            } else {
+                this.color = "#B0B0B0";
+            }
         }
         label: string;
         start: number;
@@ -162,7 +167,7 @@ namespace LiteMol.PrankWeb {
         getChainRegions() {
             let result: ProtaelRegion[] = [];
             this.controller.latestState.seq.regions.forEach((region, i) => {
-                result.push(new ProtaelRegion(`Chain ${region.regionName}`, region.start + 1, region.end + 1));
+                result.push(new ProtaelRegion(`Chain ${region.regionName}`, region.start + 1, region.end + 1, i % 2 != 0));
             });
             return result;
         }
