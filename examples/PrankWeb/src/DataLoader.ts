@@ -249,14 +249,9 @@ namespace LiteMol.PrankWeb.DataLoader {
         const surface = plugin.selectEntities(Bootstrap.Tree.Selection.byRef(TREE_REF_SURFACE).subtree().ofType(Bootstrap.Entity.Molecule.Visual))[0];
         const cartoon = plugin.selectEntities(Bootstrap.Tree.Selection.byRef(TREE_REF_CARTOON).subtree().ofType(Bootstrap.Entity.Molecule.Visual))[0];
         const atoms = plugin.selectEntities(Bootstrap.Tree.Selection.byRef(TREE_REF_ATOMS).subtree().ofType(Bootstrap.Entity.Molecule.Visual))[0];
-        const water = plugin.selectEntities(Bootstrap.Tree.Selection.byRef('water'))[0];
         plugin.command(Bootstrap.Command.Visual.UpdateBasicTheme, { visual: surface as any, theme: theme });
-        Bootstrap.Command.Entity.SetVisibility.dispatch(plugin.context, { entity: surface, visible: false });
         plugin.command(Bootstrap.Command.Visual.UpdateBasicTheme, { visual: cartoon as any, theme: residueTheme });
-        Bootstrap.Command.Entity.SetVisibility.dispatch(plugin.context, { entity: cartoon, visible: true });
         plugin.command(Bootstrap.Command.Visual.UpdateBasicTheme, { visual: atoms as any, theme: theme });
-        Bootstrap.Command.Entity.SetVisibility.dispatch(plugin.context, { entity: atoms, visible: false });
-        Bootstrap.Command.Entity.SetVisibility.dispatch(plugin.context, { entity: water, visible: false }); // Hide water balls and sticks.
         
         plugin.selectEntities(Bootstrap.Tree.Selection.byRef('pockets').subtree().ofType(Bootstrap.Entity.Molecule.Visual)).forEach(selection => {;
             plugin.command(Bootstrap.Command.Visual.UpdateBasicTheme, { visual: selection as any, theme: theme });
