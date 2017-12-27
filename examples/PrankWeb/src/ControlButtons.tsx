@@ -6,11 +6,11 @@ namespace LiteMol.PrankWeb {
     import React = LiteMol.Plugin.React; // this is to enable the HTML-like syntax
 
     enum ColoredView {
-        Surface = 0, Cartoon, Atoms,
+        Atoms = 0, Surface, Cartoon,
     }
 
     export class ControlButtons extends React.Component<{  plugin: Plugin.Controller, inputType: string, inputId: string }, { coloredView: ColoredView }> {
-        state = { coloredView: ColoredView.Surface }
+        state = { coloredView: ColoredView.Atoms }; // So that surface is default.
 
         // http://stackoverflow.com/questions/400212/how-do-i-copy-to-the-clipboard-in-javascript
         copyTextToClipboard(text : string) {
@@ -109,6 +109,10 @@ namespace LiteMol.PrankWeb {
                     break;
                 }
             }
+        }
+
+        componentDidMount() {
+            this.toggleStructuralView();
         }
 
         render() {
