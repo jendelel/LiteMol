@@ -112,7 +112,7 @@ namespace LiteMol.PrankWeb {
         }
 
         render() {
-            let type: string = this.props.inputType == "pdb" ? "id" : "upload";
+            let type: string = this.props.inputType;
             let downloadUrl = `/api/${type}/all/${this.props.inputId}`;
             let mail = "mailto:?subject=PrankWeb".concat(encodeURIComponent(` - ${window.location.href}`))
             return (<div className="control-buttons">

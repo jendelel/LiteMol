@@ -66,19 +66,9 @@ namespace LiteMol.PrankWeb.DataLoader {
     export function loadData(plugin: Plugin.Controller, inputType: string, inputId: string) {
         return new LiteMol.Promise<PrankData>((res, rej) => {
             plugin.clear();
-            let pdbUrl: string;
-            let seqUrl: string;
-            let csvUrl: string;
-            if (inputType == "pdb") {
-                pdbUrl = "/api/id/pdb/" + inputId;
-                csvUrl = "/api/id/csv/" + inputId;
-                seqUrl = "/api/id/seq/" + inputId;
-            }
-            else {
-                pdbUrl = "/api/upload/pdb/" + inputId;
-                csvUrl = "/api/upload/csv/" + inputId;
-                seqUrl = "/api/upload/seq/" + inputId;
-            }
+            let pdbUrl: string = `/api/${inputType}/pdb/${inputId}`;
+            let seqUrl: string = `/api/${inputType}/seq/${inputId}`;
+            let csvUrl: string = `/api/${inputType}/csv/${inputId}`;
             // Download pdb and create a model.
             let model = plugin.createTransform()
                 .add(plugin.root, Transformer.Data.Download, { url: pdbUrl, type: 'String', id: inputType })
