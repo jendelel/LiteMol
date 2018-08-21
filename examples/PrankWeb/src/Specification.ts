@@ -17,7 +17,6 @@ namespace LiteMol.PrankWeb {
             { transformer: Transformer.Molecule.CreateMacromoleculeVisual, view: Views.Transform.Empty },
             { transformer: Transformer.Molecule.CreateVisual, view: Views.Transform.Molecule.CreateVisual },
 
-            
             { transformer: Transformer.Molecule.CreateLabels, view: Views.Transform.Molecule.CreateLabels },
 
             { transformer: Extensions.ParticleColoring.Apply, view: Extensions.ParticleColoring.UI.Apply, initiallyCollapsed: true },
@@ -54,7 +53,7 @@ namespace LiteMol.PrankWeb {
             // this tracks what is downloaded and some basic actions. Does not send any private data etc.
             // While it is not required for any functionality, we as authors are very much interested in basic 
             // usage statistics of the application and would appriciate if this behaviour is used.
-            Bootstrap.Behaviour.GoogleAnalytics('UA-77062725-1')
+            // Bootstrap.Behaviour.GoogleAnalytics('UA-77062725-1')
         ],
         components: [
             Plugin.Components.Visualization.HighlightInfo(LayoutRegion.Main, true),
