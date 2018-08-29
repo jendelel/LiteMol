@@ -266,7 +266,9 @@ namespace LiteMol.PrankWeb {
             let features = document.querySelectorAll(".pl-ftrack .pl-feature");
             this.forEachNodeInSelector(features, el => {
                 if (el.parentElement!.id == "Pockets") {
-                    let pocket = this.parsePocketName(el.attributes.getNamedItem("data-d").value);
+                    let attr = el.attributes.getNamedItem("data-d");
+                    if (!attr) return;
+                    let pocket = this.parsePocketName(attr.value);
                     el.onclick = () => this.onPocketClick(pocket);
                     el.onmouseover = () => this.selectAndDisplayToastPocket(pocket, true);
                     el.onmouseout = () => this.selectAndDisplayToastPocket(pocket, false);
