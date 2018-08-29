@@ -1,3 +1,9 @@
+# 1.6.5
+* Added optional "direction cones" to cartoons visualization.
+
+# 1.6.5
+* Added BGSU RNA Loop Annotation.
+
 # 1.6.4
 * Updated/fixed carbohydrate selection behaviour.
 

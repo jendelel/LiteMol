@@ -8,6 +8,7 @@ namespace LiteMol.Visualization.Molecule.Cartoons.Geometry {
         pickGeometry: THREE.BufferGeometry = <any>void 0;
 
         gapsGeometry: THREE.BufferGeometry | undefined = void 0;
+        directionConesGeometry: THREE.BufferGeometry | undefined = void 0;
 
         vertexMap: Selection.VertexMap = <any>void 0;
         vertexStateBuffer: THREE.BufferAttribute = <any>void 0;
@@ -18,16 +19,25 @@ namespace LiteMol.Visualization.Molecule.Cartoons.Geometry {
             if (this.gapsGeometry) {
                 this.gapsGeometry.dispose();
             }
+            if (this.directionConesGeometry) {
+                this.directionConesGeometry.dispose();
+            }
         }
     }
     
+    export interface CreateParameters {
+        radialSegmentCount: number, 
+        tessalation: number,
+        showDirectionCones: boolean
+    }
+
     export interface Context {
         computation: Core.Computation.Context,
         
         model: Core.Structure.Molecule.Model,
         atomIndices: number[],
         linearSegments: number,
-        parameters: any,
+        parameters: CreateParameters,
         isTrace: boolean,
                 
         params: CartoonsGeometryParams,
@@ -47,7 +57,7 @@ namespace LiteMol.Visualization.Molecule.Cartoons.Geometry {
         model: Core.Structure.Molecule.Model,
         atomIndices: number[],
         linearSegments: number,
-        parameters: any,
+        parameters: CreateParameters,
         isTrace: boolean,
         computation: Core.Computation.Context): Promise<Data> {
         
@@ -64,7 +74,12 @@ namespace LiteMol.Visualization.Molecule.Cartoons.Geometry {
             state: new CartoonsGeometryState(params, model.data.residues.count),
             units: <any>void 0,
             
-            strandArrays: <any>void 0,
+            strandArrays: {
+                startIndex: model.data.residues.atomStartIndex,
+                endIndex: model.data.residues.atomEndIndex,
+                x: model.positions.x, y: model.positions.y, z: model.positions.z,
+                name: model.data.atoms.name
+            },
             strandTemplate: <any>void 0,
             
             builder: new Builder(),
